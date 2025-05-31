@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Build outputs
+out/
+*.vsix
+
+# IDE files
+.vscode/settings.json
+# .vscode/launch.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Claude AI files
+CLAUDE.md
+.claude/
