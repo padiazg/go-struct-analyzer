@@ -3,7 +3,7 @@
   "displayName": "Go Struct Analyzer",
   "description": "Shows size and padding information for Go structs",
   "version": "1.0.0",
-  "publisher": "d2d97615-ac15-6959-a231-82f5f64959eb",
+  "publisher": "PatricioDiaz",
   "author": {
     "name": "Patricio Diaz (padiazg@gmail.com)"
   },
@@ -16,6 +16,7 @@
   "bugs": {
     "url": "https://github.com/padiazg/go-struct-analyzer/issues"
   },
+  "icon": "icon.png",
   "keywords": [
     "go",
     "golang",

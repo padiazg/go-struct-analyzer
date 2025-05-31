@@ -1,7 +1,7 @@
 # Go Struct Analyzer
 
 A VS Code extension that shows memory size and padding information for Go structs, helping you optimize memory usage and understand struct layout.
-
+![screenshot](screenshot.png)
 ## Features
 
 - **Hover Information**: Hover over struct fields to see size, alignment, offset, and padding details
