@@ -7,7 +7,7 @@
             "request": "launch",
             "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
-            "preLaunchTask": "${workspaceFolder}/npm:compile"
+            "preLaunchTask": "npm:compile"
         },
         {
             "name": "Launch Extension Tests",
@@ -18,7 +18,7 @@
                 "--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
             ],
             "outFiles": ["${workspaceFolder}/out/test/**/*.js"],
-            "preLaunchTask": "${workspaceFolder}/npm:compile"
+            "preLaunchTask": "npm:compile"
         }
     ]
 }

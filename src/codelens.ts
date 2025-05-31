@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { GoStructParser, GoStruct } from './go_parser';
-import { StructAnalyzer } from './struct_analyzer';
+import { GoStructParser, GoStruct } from './parser';
+import { StructAnalyzer } from './analyzer';
 
 export class CodeLensProvider implements vscode.CodeLensProvider {
     constructor(

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { GoStructParser, GoStruct, GoField } from './go_parser';
-import { StructAnalyzer } from './struct_analyzer';
+import { GoStructParser, GoStruct, GoField } from './parser';
+import { StructAnalyzer } from './analyzer';
 
 export class HoverProvider implements vscode.HoverProvider {
     constructor(

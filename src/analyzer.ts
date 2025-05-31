@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { GoStruct, GoField } from './go_parser';
+import { GoStruct, GoField } from './parser';
 
 export interface FieldAnalysis {
     name: string;

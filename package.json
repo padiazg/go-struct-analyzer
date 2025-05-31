@@ -3,18 +3,18 @@
   "displayName": "Go Struct Analyzer",
   "description": "Shows size and padding information for Go structs",
   "version": "1.0.0",
-  "publisher": "your-publisher-id",
+  "publisher": "d2d97615-ac15-6959-a231-82f5f64959eb",
   "author": {
-    "name": "Your Name"
+    "name": "Patricio Diaz (padiazg@gmail.com)"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/go-struct-analyzer"
+    "url": "https://github.com/padiazg/go-struct-analyzer"
   },
-  "homepage": "https://github.com/yourusername/go-struct-analyzer",
+  "homepage": "https://github.com/padiazg/go-struct-analyzer",
   "bugs": {
-    "url": "https://github.com/yourusername/go-struct-analyzer/issues"
+    "url": "https://github.com/padiazg/go-struct-analyzer/issues"
   },
   "keywords": [
     "go",

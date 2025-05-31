@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { GoStructParser } from './go_parser';
-import { StructAnalyzer } from './struct_analyzer';
-import { HoverProvider } from './hover_provider';
-import { CodeLensProvider } from './codelens_provider';
+import { GoStructParser } from './parser';
+import { StructAnalyzer } from './analyzer';
+import { HoverProvider } from './hover';
+import { CodeLensProvider } from './codelens';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Go Struct Analyzer is now active!');
