@@ -35,10 +35,18 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
                     new vscode.Position(struct.line, structNameEnd)
                 );
                 
+                let title = `${analysis.totalSize} bytes total`;
+                
+                if (this.analyzer.canOptimizeStruct(struct)) {
+                    const optimalSize = this.analyzer.getOptimalStructSize(struct);
+                    title += ` (can be ${optimalSize} bytes)`;
+                }
+                
                 codeLenses.push(new vscode.CodeLens(range, {
-                    title: `${analysis.totalSize} bytes total`,
+                    title: title,
                     command: 'goStructAnalyzer.analyzeStruct',
-                    tooltip: `Click to view detailed memory layout for ${struct.name}`
+                    tooltip: `Click to view detailed memory layout for ${struct.name}`,
+                    arguments: [struct, analysis]
                 }));
             }
 

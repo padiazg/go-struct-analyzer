@@ -1,0 +1,45 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install vsce
+      run: npm install -g @vscode/vsce
+      
+    - name: Compile TypeScript
+      run: npm run compile
+      
+    - name: Package extension
+      run: vsce package
+      
+    - name: Upload VSIX Artifact
+      if: matrix.node-version == '18.x'
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsix-build-${{ github.sha }}
+        path: "*.vsix"
+        retention-days: 7
