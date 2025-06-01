@@ -2,7 +2,7 @@
   "name": "go-struct-analyzer",
   "displayName": "Go Struct Analyzer",
   "description": "Shows size and padding information for Go structs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "PatricioDiaz",
   "author": {
     "name": "Patricio Diaz (padiazg@gmail.com)"
