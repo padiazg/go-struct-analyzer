@@ -177,4 +177,36 @@ export class StructAnalyzer {
         const analysis = this.analyzeStruct(goStruct);
         return analysis.totalSize;
     }
+
+    getOptimalStructSize(goStruct: GoStruct): number {
+        const optimizedFields = this.getOptimalFieldOrder(goStruct.fields);
+        const optimizedStruct: GoStruct = {
+            ...goStruct,
+            fields: optimizedFields
+        };
+        const analysis = this.analyzeStruct(optimizedStruct);
+        return analysis.totalSize;
+    }
+
+    private getOptimalFieldOrder(fields: GoField[]): GoField[] {
+        const fieldsWithInfo = fields.map(field => ({
+            field,
+            typeInfo: this.getTypeInfo(field.type)
+        }));
+
+        fieldsWithInfo.sort((a, b) => {
+            if (a.typeInfo.alignment !== b.typeInfo.alignment) {
+                return b.typeInfo.alignment - a.typeInfo.alignment;
+            }
+            return b.typeInfo.size - a.typeInfo.size;
+        });
+
+        return fieldsWithInfo.map(item => item.field);
+    }
+
+    canOptimizeStruct(goStruct: GoStruct): boolean {
+        const currentSize = this.getTotalStructSize(goStruct);
+        const optimalSize = this.getOptimalStructSize(goStruct);
+        return optimalSize < currentSize;
+    }
 }

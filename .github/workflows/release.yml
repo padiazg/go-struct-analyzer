@@ -1,0 +1,84 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        default: 'v1.0.1'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install vsce
+      run: npm install -g @vscode/vsce
+      
+    - name: Compile TypeScript
+      run: npm run compile
+      
+    - name: Package extension
+      run: vsce package
+      
+    - name: Get package info
+      id: package
+      run: |
+        echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
+        echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        echo "vsix_file=$(ls *.vsix)" >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+        release_name: Release ${{ github.event.inputs.tag || github.ref_name }}
+        body: |
+          ## Changes in ${{ steps.package.outputs.name }} v${{ steps.package.outputs.version }}
+          
+          Download the `.vsix` file below and install it in VS Code:
+          1. Open VS Code
+          2. Go to Extensions view (Ctrl+Shift+X)
+          3. Click the "..." menu
+          4. Select "Install from VSIX..."
+          5. Choose the downloaded file
+          
+          See [CHANGELOG.md](./changelog.md) for detailed changes.
+        draft: false
+        prerelease: false
+        
+    - name: Upload VSIX Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.package.outputs.vsix_file }}
+        asset_name: ${{ steps.package.outputs.vsix_file }}
+        asset_content_type: application/zip
+        
+    - name: Upload VSIX Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsix-package
+        path: "*.vsix"
+        retention-days: 30

@@ -66,6 +66,11 @@
           "enum": ["amd64", "386", "arm64", "arm"],
           "default": "amd64",
           "description": "Target architecture for size calculations"
+        },
+        "goStructAnalyzer.enableStructOptimizationWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show warnings for structs that can be optimized for better memory layout"
         }
       }
     }
