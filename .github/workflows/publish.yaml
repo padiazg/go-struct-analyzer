@@ -1,55 +1,38 @@
-# .github/workflows/publish.yml
 name: Publish Extension
 
 on:
-#   push:
-#     tags:
-#       - 'v*.*.*'   # Se dispara con tags tipo v1.0.2, v2.0.0, etc.
-    workflow_dispatch:
-      inputs:
-        tag:
-          description: 'Tag to release'
-          required: true
-          default: 'v1.1.0'
+  # release:
+  #   types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v1.1.0)'
+        required: true
+        default: 'v1.1.0'
 
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Download VSIX from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: gh release download "$RELEASE_TAG" --repo ${{ github.repository }} --pattern "*.vsix"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Compile TypeScript
-        run: npm run compile
 
       - name: Install vsce and ovsx
         run: npm install -g @vscode/vsce ovsx
 
-      - name: Package extension
-        run: vsce package
-        # Genera el .vsix — por ejemplo go-struct-analyzer-1.0.2.vsix
-
-      - name: Publish to VS Marketplace
+      - name: Publish to VS Code Marketplace
         run: vsce publish --packagePath *.vsix
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX
         run: ovsx publish *.vsix --pat ${{ secrets.OVSX_PAT }}
-
-      - name: Upload .vsix as release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          files: '*.vsix'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
