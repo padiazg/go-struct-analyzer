@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { GoStructParser, GoStruct, GoField } from './parser';
 import { StructAnalyzer } from './analyzer';
-import { DIAGNOSTIC_CODE_OPTIMIZABLE } from './diagnostics';
+import { DIAGNOSTIC_CODE_OPTIMIZABLE, DIAGNOSTIC_CODE_POINTER_BYTES } from './diagnostics';
 
 export class StructReorderCodeActionProvider implements vscode.CodeActionProvider {
     constructor(
@@ -22,28 +22,30 @@ export class StructReorderCodeActionProvider implements vscode.CodeActionProvide
         const actions: vscode.CodeAction[] = [];
 
         for (const diagnostic of context.diagnostics) {
-            if (diagnostic.code !== DIAGNOSTIC_CODE_OPTIMIZABLE) continue;
+            const isSize    = diagnostic.code === DIAGNOSTIC_CODE_OPTIMIZABLE;
+            const isPtrBytes = diagnostic.code === DIAGNOSTIC_CODE_POINTER_BYTES;
+            if (!isSize && !isPtrBytes) continue;
 
             const structRange = diagnostic.relatedInformation?.[0]?.location?.range;
             if (!structRange) continue;
 
             const structs = await this.parser.parseDocument(document);
+            this.analyzer.setStructRegistry(structs);
             const struct = structs.find(s =>
                 s.range.start.line === structRange.start.line &&
                 s.range.end.line === structRange.end.line
             );
             if (!struct) continue;
 
-            // Skip if multi-name fields present (e.g. `a, b int`)
             if (struct.hasMultiNameFields) continue;
-
-            // Skip if any embedded fields — complex reordering semantics
-            if (struct.fields.some(f => f.isEmbedded)) continue;
-
-            // Skip single-field structs
+            // Embedded fields can be reordered safely — text reconstruction handles them.
+            // Only skip if ALL fields are embedded (nothing to reorder).
+            if (struct.fields.every(f => f.isEmbedded)) continue;
             if (struct.fields.length <= 1) continue;
 
-            const optimalOrder = this.analyzer.getOptimalFieldOrder(struct.fields);
+            const optimalOrder = isPtrBytes
+                ? this.analyzer.getOptimalPointerOrder(struct.fields)
+                : this.analyzer.getOptimalFieldOrder(struct.fields);
 
             const orderChanged = struct.fields.some((f, idx) => f.name !== optimalOrder[idx].name);
             if (!orderChanged) continue;
@@ -51,12 +53,13 @@ export class StructReorderCodeActionProvider implements vscode.CodeActionProvide
             const newText = this.buildReorderedStructText(document, struct, optimalOrder);
             if (!newText) continue;
 
-            const action = new vscode.CodeAction(
-                'Reorder struct fields to optimize memory layout',
-                vscode.CodeActionKind.QuickFix
-            );
+            const title = isPtrBytes
+                ? 'Reorder struct fields to reduce GC scan range'
+                : 'Reorder struct fields to optimize memory layout';
+
+            const action = new vscode.CodeAction(title, vscode.CodeActionKind.QuickFix);
             action.diagnostics = [diagnostic];
-            action.isPreferred = config.get<boolean>('reorderCodeActionPreferred', false);
+            action.isPreferred = isSize && config.get<boolean>('reorderCodeActionPreferred', false);
 
             const edit = new vscode.WorkspaceEdit();
             edit.replace(document.uri, struct.range, newText);

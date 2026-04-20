@@ -81,6 +81,16 @@
           "type": "boolean",
           "default": false,
           "description": "Mark reorder quick fix as preferred (enables auto-apply with source.fixAll). Disabled by default to prevent accidental edits."
+        },
+        "goStructAnalyzer.enableGCPressureWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show hints for structs where reordering pointer fields would reduce the GC scan range."
+        },
+        "goStructAnalyzer.gcPressureSeverityWarning": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show GC pressure issues as warnings (yellow underline) instead of hints. Requires enableGCPressureWarnings to be true."
         }
       }
     }
