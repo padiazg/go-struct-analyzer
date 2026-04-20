@@ -294,7 +294,7 @@ type Example struct {
 
 ## Acknowledgments
 
-- [betteralign](https://github.com/dkorunic/betteralign) — cross-testing against this tool surfaced the GC pointer scan range concept that inspired the GC pressure analysis feature in v1.2.0.
+- [fieldalignment](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/fieldalignment) — cross-testing against this tool surfaced the GC pointer scan range concept that inspired the GC pressure analysis feature in v1.2.0.
 
 ## Contributing
 
