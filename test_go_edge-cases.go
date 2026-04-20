@@ -1,4 +1,4 @@
-package testcases
+package main
 
 // =============================================================================
 // CASO 1: Struct ya óptimo — NO debe ofrecer code action
@@ -17,18 +17,20 @@ type AlreadyOptimal struct {
 // CASO 2: Caso clásico de padding ineficiente — DEBE ofrecer code action
 // =============================================================================
 // Layout actual:
-//   Active   bool    → offset 0,  size 1,  align 1  → +7 padding
-//   Score    int64   → offset 8,  size 8,  align 8
-//   Deleted  bool    → offset 16, size 1,  align 1  → +7 padding
-//   Count    int64   → offset 24, size 8,  align 8
-//   Total: 32 bytes
+//
+//	Active   bool    → offset 0,  size 1,  align 1  → +7 padding
+//	Score    int64   → offset 8,  size 8,  align 8
+//	Deleted  bool    → offset 16, size 1,  align 1  → +7 padding
+//	Count    int64   → offset 24, size 8,  align 8
+//	Total: 32 bytes
 //
 // Layout óptimo:
-//   Score    int64   → offset 0,  size 8
-//   Count    int64   → offset 8,  size 8
-//   Active   bool    → offset 16, size 1
-//   Deleted  bool    → offset 17, size 1  → +6 padding
-//   Total: 24 bytes  (ahorra 8 bytes)
+//
+//	Score    int64   → offset 0,  size 8
+//	Count    int64   → offset 8,  size 8
+//	Active   bool    → offset 16, size 1
+//	Deleted  bool    → offset 17, size 1  → +6 padding
+//	Total: 24 bytes  (ahorra 8 bytes)
 type ClassicBadLayout struct {
 	Active  bool
 	Score   int64
@@ -55,16 +57,18 @@ type Empty struct{}
 // relativa entre ellos. Solo se reordenan los campos con nombre explícito.
 //
 // Layout actual:
-//   Base     BaseModel  → offset 0, size 16 (hipotético), align 8
-//   Active   bool       → offset 16, size 1, align 1  → +7 padding
-//   Score    int64      → offset 24, size 8, align 8
-//   Total: 32 bytes
+//
+//	Base     BaseModel  → offset 0, size 16 (hipotético), align 8
+//	Active   bool       → offset 16, size 1, align 1  → +7 padding
+//	Score    int64      → offset 24, size 8, align 8
+//	Total: 32 bytes
 //
 // Layout óptimo:
-//   Base     BaseModel  → offset 0, size 16, align 8  (no se mueve)
-//   Score    int64      → offset 16, size 8, align 8
-//   Active   bool       → offset 24, size 1, align 1  → +7 padding
-//   Total: 32 bytes  (en este caso igual, pero el orden de los nombrados cambia)
+//
+//	Base     BaseModel  → offset 0, size 16, align 8  (no se mueve)
+//	Score    int64      → offset 16, size 8, align 8
+//	Active   bool       → offset 24, size 1, align 1  → +7 padding
+//	Total: 32 bytes  (en este caso igual, pero el orden de los nombrados cambia)
 type BaseModel struct {
 	ID        uint64
 	CreatedAt int64
@@ -82,18 +86,20 @@ type WithEmbedded struct {
 // =============================================================================
 // Al reordenar, el campo y su tag van juntos.
 // Layout actual:
-//   ID       uint64  → offset 0,  size 8  (ya óptimo, no se mueve)
-//   Active   bool    → offset 8,  size 1  → +3 padding
-//   Score    int32   → offset 12, size 4
-//   Name     string  → offset 16, size 16
-//   Total: 32 bytes
+//
+//	ID       uint64  → offset 0,  size 8  (ya óptimo, no se mueve)
+//	Active   bool    → offset 8,  size 1  → +3 padding
+//	Score    int32   → offset 12, size 4
+//	Name     string  → offset 16, size 16
+//	Total: 32 bytes
 //
 // Layout óptimo:
-//   ID       uint64  → offset 0,  size 8
-//   Name     string  → offset 8,  size 16
-//   Score    int32   → offset 24, size 4
-//   Active   bool    → offset 28, size 1  → +3 padding
-//   Total: 32 bytes  (mismo tamaño en este caso, pero orden diferente)
+//
+//	ID       uint64  → offset 0,  size 8
+//	Name     string  → offset 8,  size 16
+//	Score    int32   → offset 24, size 4
+//	Active   bool    → offset 28, size 1  → +3 padding
+//	Total: 32 bytes  (mismo tamaño en este caso, pero orden diferente)
 //
 // IMPORTANTE: verificar que `json:"active" db:"active"` se mantiene con Active
 type WithStructTags struct {
@@ -119,11 +125,11 @@ type WithInlineComments struct {
 // CASO 8: Struct con tags Y comentarios inline — ambos deben preservarse
 // =============================================================================
 type WithTagsAndComments struct {
-	ID        uint64 `json:"id"`        // primary key, autoincrement
-	Active    bool   `json:"active"`    // soft enable/disable
+	ID        uint64 `json:"id"`         // primary key, autoincrement
+	Active    bool   `json:"active"`     // soft enable/disable
 	CreatedAt int64  `json:"created_at"` // unix timestamp
-	Score     int32  `json:"score"`     // ranking score
-	Name      string `json:"name"`      // display name
+	Score     int32  `json:"score"`      // ranking score
+	Name      string `json:"name"`       // display name
 }
 
 // =============================================================================
@@ -151,16 +157,18 @@ type OtherBad struct {
 // CASO 10: Struct con punteros — punteros son 8 bytes en amd64
 // =============================================================================
 // Layout actual:
-//   Active   bool     → offset 0,  size 1,  align 1  → +7 padding
-//   Next     *Node    → offset 8,  size 8,  align 8
-//   Value    int32    → offset 16, size 4,  align 4  → +4 padding
-//   Total: 24 bytes
+//
+//	Active   bool     → offset 0,  size 1,  align 1  → +7 padding
+//	Next     *Node    → offset 8,  size 8,  align 8
+//	Value    int32    → offset 16, size 4,  align 4  → +4 padding
+//	Total: 24 bytes
 //
 // Layout óptimo:
-//   Next     *Node    → offset 0,  size 8,  align 8
-//   Value    int32    → offset 8,  size 4,  align 4
-//   Active   bool     → offset 12, size 1,  align 1  → +3 padding
-//   Total: 16 bytes  (ahorra 8 bytes)
+//
+//	Next     *Node    → offset 0,  size 8,  align 8
+//	Value    int32    → offset 8,  size 4,  align 4
+//	Active   bool     → offset 12, size 1,  align 1  → +3 padding
+//	Total: 16 bytes  (ahorra 8 bytes)
 type Node struct {
 	Active bool
 	Next   *Node
@@ -171,9 +179,10 @@ type Node struct {
 // CASO 11: Struct con slice y map — ambos son 24 y 8 bytes respectivamente
 // =============================================================================
 // Sizes en amd64:
-//   []T     → 24 bytes (ptr + len + cap), align 8
-//   map[K]V → 8 bytes (ptr), align 8
-//   string  → 16 bytes (ptr + len), align 8
+//
+//	[]T     → 24 bytes (ptr + len + cap), align 8
+//	map[K]V → 8 bytes (ptr), align 8
+//	string  → 16 bytes (ptr + len), align 8
 //
 // Layout actual: ineficiente por bool intercalado
 type WithCompositeTypes struct {
@@ -199,18 +208,20 @@ type WithCompositeTypes struct {
 // [4]int64 → size 32, align 8
 //
 // Layout actual:
-//   ID      uint64    → offset 0,  size 8,  align 8
-//   Hash    [32]byte  → offset 8,  size 32, align 1
-//   Active  bool      → offset 40, size 1,  align 1  → +7 padding
-//   Scores  [4]int64  → offset 48, size 32, align 8
-//   Total: 80 bytes
+//
+//	ID      uint64    → offset 0,  size 8,  align 8
+//	Hash    [32]byte  → offset 8,  size 32, align 1
+//	Active  bool      → offset 40, size 1,  align 1  → +7 padding
+//	Scores  [4]int64  → offset 48, size 32, align 8
+//	Total: 80 bytes
 //
 // Layout óptimo:
-//   Scores  [4]int64  → offset 0,  size 32, align 8
-//   ID      uint64    → offset 32, size 8,  align 8
-//   Hash    [32]byte  → offset 40, size 32, align 1
-//   Active  bool      → offset 72, size 1,  align 1  → +7 padding
-//   Total: 80 bytes  (mismo — el array [32]byte con align 1 no mejora mucho)
+//
+//	Scores  [4]int64  → offset 0,  size 32, align 8
+//	ID      uint64    → offset 32, size 8,  align 8
+//	Hash    [32]byte  → offset 40, size 32, align 1
+//	Active  bool      → offset 72, size 1,  align 1  → +7 padding
+//	Total: 80 bytes  (mismo — el array [32]byte con align 1 no mejora mucho)
 type WithArrays struct {
 	ID     uint64
 	Hash   [32]byte
@@ -240,9 +251,9 @@ type Address struct {
 }
 
 type Person struct {
-	Active  bool    // bool antes de struct → ineficiente
-	Addr    Address // size = 32 (hipotético), align = 8
-	Score   int64
+	Active bool    // bool antes de struct → ineficiente
+	Addr   Address // size = 32 (hipotético), align = 8
+	Score  int64
 }
 
 // =============================================================================
@@ -251,16 +262,18 @@ type Person struct {
 // interface{} → 16 bytes (type ptr + value ptr), align 8
 //
 // Layout actual:
-//   Active bool        → offset 0,  size 1,  align 1  → +7 padding
-//   Data   interface{} → offset 8,  size 16, align 8
-//   ID     uint32      → offset 24, size 4,  align 4  → +4 padding
-//   Total: 32 bytes
+//
+//	Active bool        → offset 0,  size 1,  align 1  → +7 padding
+//	Data   interface{} → offset 8,  size 16, align 8
+//	ID     uint32      → offset 24, size 4,  align 4  → +4 padding
+//	Total: 32 bytes
 //
 // Layout óptimo:
-//   Data   interface{} → offset 0,  size 16, align 8
-//   ID     uint32      → offset 16, size 4,  align 4
-//   Active bool        → offset 20, size 1,  align 1  → +3 padding
-//   Total: 24 bytes  (ahorra 8 bytes)
+//
+//	Data   interface{} → offset 0,  size 16, align 8
+//	ID     uint32      → offset 16, size 4,  align 4
+//	Active bool        → offset 20, size 1,  align 1  → +3 padding
+//	Total: 24 bytes  (ahorra 8 bytes)
 type WithInterface struct {
 	Active bool
 	Data   interface{}
@@ -274,16 +287,18 @@ type WithInterface struct {
 // func(...) → 8 bytes, align 8
 //
 // Layout actual:
-//   Done     chan struct{} → offset 0,  size 8, align 8
-//   Active   bool         → offset 8,  size 1, align 1  → +7 padding
-//   Handler  func(int)    → offset 16, size 8, align 8
-//   Total: 24 bytes
+//
+//	Done     chan struct{} → offset 0,  size 8, align 8
+//	Active   bool         → offset 8,  size 1, align 1  → +7 padding
+//	Handler  func(int)    → offset 16, size 8, align 8
+//	Total: 24 bytes
 //
 // Layout óptimo:
-//   Done     chan struct{} → offset 0,  size 8, align 8
-//   Handler  func(int)    → offset 8,  size 8, align 8
-//   Active   bool         → offset 16, size 1, align 1  → +7 padding
-//   Total: 24 bytes  (mismo total, pero Active al final)
+//
+//	Done     chan struct{} → offset 0,  size 8, align 8
+//	Handler  func(int)    → offset 8,  size 8, align 8
+//	Active   bool         → offset 16, size 1, align 1  → +7 padding
+//	Total: 24 bytes  (mismo total, pero Active al final)
 type WithChanAndFunc struct {
 	Done    chan struct{}
 	Active  bool

@@ -70,6 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             const position = editor.selection.active;
             const structs = await parser.parseDocument(editor.document);
+            analyzer.setStructRegistry(structs);
             const structAtPosition = structs.find((s: any) =>
                 s.range.contains(position)
             );
@@ -98,10 +99,29 @@ function showStructAnalysis(analysis: any, struct?: any) {
 }
 
 function generateAnalysisHTML(analysis: any, struct?: any): string {
-    const canOptimize = struct && globalAnalyzer && globalAnalyzer.canOptimizeStruct(struct);
-    const optimalAnalysis: StructAnalysis | null = canOptimize
-        ? globalAnalyzer.computeOptimalLayout(struct)
-        : null;
+    let canOptimize = false;
+    let canReduceGC = false;
+    let sizeOptimal: StructAnalysis | null = null;
+    let gcOptimal: StructAnalysis | null = null;
+    let currentPB = 0;
+    let gcOptimalPB = 0;
+    let sizeOptimalPB = 0;
+
+    if (struct && globalAnalyzer) {
+        try { canOptimize = globalAnalyzer.canOptimizeStruct(struct); } catch (_) {}
+        try { canReduceGC = globalAnalyzer.canReducePointerBytes(struct); } catch (_) {}
+        try { if (canOptimize) sizeOptimal = globalAnalyzer.computeOptimalLayout(struct); } catch (_) {}
+        try { if (canReduceGC) gcOptimal = globalAnalyzer.computeGCOptimalLayout(struct); } catch (_) {}
+        try { currentPB = globalAnalyzer.calculatePointerBytes(struct); } catch (_) {}
+        try {
+            if (sizeOptimal) {
+                sizeOptimalPB = globalAnalyzer.calculatePointerBytes(
+                    { ...struct, fields: globalAnalyzer.getOptimalFieldOrder(struct.fields) }
+                );
+            }
+        } catch (_) {}
+        try { if (gcOptimal) gcOptimalPB = globalAnalyzer.getOptimalPointerBytes(struct); } catch (_) {}
+    }
 
     const renderFieldRows = (fields: any[]) =>
         fields.map((field: any) => `
@@ -114,19 +134,15 @@ function generateAnalysisHTML(analysis: any, struct?: any): string {
             </tr>
         `).join('');
 
-    const currentTable = `
+    const renderTable = (a: StructAnalysis, ptrBytes: number) => `
         <table>
             <thead><tr><th>Field</th><th>Type</th><th>Size</th><th>Offset</th><th>Padding</th></tr></thead>
-            <tbody>${renderFieldRows(analysis.fields)}</tbody>
-            <tfoot><tr><td colspan="5" class="total">Total: ${analysis.totalSize} bytes (align: ${analysis.alignment})</td></tr></tfoot>
+            <tbody>${renderFieldRows(a.fields)}</tbody>
+            <tfoot>
+                <tr><td colspan="5" class="total">Total: ${a.totalSize} bytes (align: ${a.alignment})</td></tr>
+                ${ptrBytes > 0 ? `<tr><td colspan="5" class="gc-bytes">GC scan: ${ptrBytes} bytes</td></tr>` : ''}
+            </tfoot>
         </table>`;
-
-    const optimalTable = optimalAnalysis ? `
-        <table>
-            <thead><tr><th>Field</th><th>Type</th><th>Size</th><th>Offset</th><th>Padding</th></tr></thead>
-            <tbody>${renderFieldRows(optimalAnalysis.fields)}</tbody>
-            <tfoot><tr><td colspan="5" class="total">Total: ${optimalAnalysis.totalSize} bytes (align: ${optimalAnalysis.alignment})</td></tr></tfoot>
-        </table>` : '';
 
     return `
         <!DOCTYPE html>
@@ -135,8 +151,11 @@ function generateAnalysisHTML(analysis: any, struct?: any): string {
             <style>
                 body { font-family: monospace; padding: 20px; }
                 h2 { margin-bottom: 4px; }
-                .banner { margin: 12px 0; padding: 10px; background-color: #1a1a1a; border: 1px solid #ffa500; border-radius: 4px; color: #ffffff; }
-                .banner strong { color: #ffa500; }
+                .banner { margin: 12px 0; padding: 10px; background-color: #1a1a1a; border-radius: 4px; color: #ffffff; }
+                .banner-warn { border: 1px solid #ffa500; }
+                .banner-warn strong { color: #ffa500; }
+                .banner-hint { border: 1px solid #5599ff; }
+                .banner-hint strong { color: #5599ff; }
                 .banner em { color: #cccccc; }
                 .columns { display: flex; gap: 24px; flex-wrap: wrap; }
                 .column { flex: 1; min-width: 280px; }
@@ -146,6 +165,7 @@ function generateAnalysisHTML(analysis: any, struct?: any): string {
                 th { font-weight: bold; }
                 .padding { color: #e06c75; }
                 .total { font-weight: bold; padding-top: 8px; }
+                .gc-bytes { color: #5599ff; font-size: 0.9em; padding-top: 2px; }
             </style>
         </head>
         <body>
@@ -154,12 +174,17 @@ function generateAnalysisHTML(analysis: any, struct?: any): string {
             <div class="columns">
                 <div class="column">
                     <h3>Current Layout</h3>
-                    ${currentTable}
+                    ${renderTable(analysis, currentPB)}
                 </div>
-                ${optimalAnalysis ? `
+                ${sizeOptimal ? `
                 <div class="column">
-                    <h3>Optimal Layout</h3>
-                    ${optimalTable}
+                    <h3>Size-Optimal Layout</h3>
+                    ${renderTable(sizeOptimal, sizeOptimalPB)}
+                </div>` : ''}
+                ${gcOptimal ? `
+                <div class="column">
+                    <h3>GC-Optimal Layout</h3>
+                    ${renderTable(gcOptimal, gcOptimalPB)}
                 </div>` : ''}
             </div>
         </body>
@@ -168,21 +193,34 @@ function generateAnalysisHTML(analysis: any, struct?: any): string {
 }
 
 function generateOptimizationInfo(struct: any): string {
-    if (!globalAnalyzer || !globalAnalyzer.canOptimizeStruct(struct)) {
-        return '';
+    if (!globalAnalyzer) return '';
+
+    const banners: string[] = [];
+
+    if (globalAnalyzer.canOptimizeStruct(struct)) {
+        const currentSize = globalAnalyzer.getTotalStructSize(struct);
+        const optimalSize = globalAnalyzer.getOptimalStructSize(struct);
+        const savings = currentSize - optimalSize;
+        banners.push(`
+            <div class="banner banner-warn">
+                <strong>⚠️ Memory Layout</strong><br>
+                <span>${currentSize} bytes → ${optimalSize} bytes (saves ${savings} bytes)</span><br>
+                <em>Reorder fields by alignment: largest first, then by size</em>
+            </div>`);
     }
 
-    const currentSize = globalAnalyzer.getTotalStructSize(struct);
-    const optimalSize = globalAnalyzer.getOptimalStructSize(struct);
-    const savings = currentSize - optimalSize;
+    if (globalAnalyzer.canReducePointerBytes(struct)) {
+        const currentPB = globalAnalyzer.calculatePointerBytes(struct);
+        const optimalPB = globalAnalyzer.getOptimalPointerBytes(struct);
+        banners.push(`
+            <div class="banner banner-hint">
+                <strong>💡 GC Pressure</strong><br>
+                <span>GC scan range: ${currentPB} bytes → ${optimalPB} bytes</span><br>
+                <em>Group pointer fields (map, chan, func, *, string, slice) before non-pointer fields</em>
+            </div>`);
+    }
 
-    return `
-        <div class="banner">
-            <strong>⚠️ Optimization Opportunity</strong><br>
-            <span>This struct can be optimized from ${currentSize} bytes to ${optimalSize} bytes (saves ${savings} bytes)</span><br>
-            <em>Reorder fields by alignment: largest alignment first, then by size</em>
-        </div>
-    `;
+    return banners.join('\n');
 }
 
 export function deactivate() {}

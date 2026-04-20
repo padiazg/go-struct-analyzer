@@ -14,7 +14,8 @@ export class HoverProvider implements vscode.HoverProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | undefined> {
         const structs = await this.parser.parseDocument(document);
-        
+        this.analyzer.setStructRegistry(structs);
+
         // Find struct and field at position
         for (const struct of structs) {
             if (struct.range.contains(position)) {

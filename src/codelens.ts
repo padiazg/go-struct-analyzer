@@ -21,6 +21,7 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
 
         const codeLenses: vscode.CodeLens[] = [];
         const structs = await this.parser.parseDocument(document);
+        this.analyzer.setStructRegistry(structs);
 
         for (const struct of structs) {
             const analysis = this.analyzer.analyzeStruct(struct);
@@ -36,10 +37,16 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
                 );
                 
                 let title = `${analysis.totalSize} bytes total`;
-                
+
                 if (this.analyzer.canOptimizeStruct(struct)) {
                     const optimalSize = this.analyzer.getOptimalStructSize(struct);
                     title += ` (can be ${optimalSize} bytes)`;
+                }
+
+                if (this.analyzer.canReducePointerBytes(struct)) {
+                    const currentPB = this.analyzer.calculatePointerBytes(struct);
+                    const optimalPB = this.analyzer.getOptimalPointerBytes(struct);
+                    title += ` · GC scan ${currentPB}→${optimalPB}B`;
                 }
                 
                 codeLenses.push(new vscode.CodeLens(range, {

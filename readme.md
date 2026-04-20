@@ -1,61 +1,75 @@
 # Go Struct Analyzer
 
 A VS Code extension that shows memory size and padding information for Go structs, helping you optimize memory usage and understand struct layout.
-![screenshot-1](screenshot-1.png)
+![screenshot-01](screenshot-01.png)
+
 ## Features
 
 - **Hover Information**: Hover over struct fields to see size, alignment, offset, and padding details
-- **Inline Annotations**: Code lens showing field sizes and padding directly in your editor
-- **Memory Layout Visualization**: Detailed struct memory layout with side-by-side current vs optimal layout
-- **Struct Optimization Warnings**: Real-time diagnostics highlighting structs that can be optimized
-- **Quick Fix**: One-click reorder of struct fields for optimal memory layout (preserves tags, comments, indentation)
-- **Optimization Suggestions**: Shows potential memory savings with optimal field ordering
+- **Inline Annotations**: Code lens showing field sizes, padding, and GC scan info directly in your editor
+- **Memory Layout Visualization**: Detailed struct memory layout with side-by-side Current, Size-Optimal, and GC-Optimal columns
+- **Struct Optimization Warnings**: Real-time diagnostics highlighting structs that waste memory due to padding
+- **GC Pressure Hints**: Detects structs where reordering pointer fields reduces the garbage collector scan range
+- **Quick Fix**: One-click reorder for both memory-layout and GC-pressure issues (preserves tags, comments, indentation)
+- **Optimization Suggestions**: Shows potential memory savings and GC scan reductions
+- **Embedded Struct Awareness**: Resolves real sizes of named structs defined in the same file for accurate analysis
 - **Architecture Support**: Configurable target architecture (amd64, 386, arm64, arm)
 - **Command Palette**: Analyze struct layout command for detailed breakdown
 
 ## Usage
 
 ### Hover Information
-Simply hover over any struct field or struct name to see detailed size information:
 
-```go
-type User struct {
-    ID       uint64    // Shows: 8 bytes, alignment 8, offset 0
-    Name     string    // Shows: 16 bytes, alignment 8, offset 8
-    Active   bool      // Shows: 1 byte, alignment 1, offset 24 (+7 padding)
-}
-```
+Simply hover over any struct field or struct name to see detailed size information:
+![screenshot-04](screenshot-04.png)
+  
+![screenshot-05](screenshot-05.png)
 
 ### Inline Annotations & Optimization Suggestions
+
 Enable inline annotations to see size information and optimization opportunities directly in your code:
 
-```go
-type User struct {      // 32 bytes total (already optimal)
-    ID       uint64     // 8B
-    Name     string     // 16B
-    Active   bool       // 1B (+7B padding)
-}
-```
+![screenshot-06](screenshot-06.png)
 
 When a struct layout can be optimized, the extension shows potential savings in parentheses.
 
 ### Memory Layout Analysis
+
 Click on any struct's code lens annotation or use the "Analyze Struct Layout" command (Ctrl+Shift+P) to open a detailed memory layout view showing exact byte positions, padding, and optimization recommendations.
 
-![screenshot-2](screenshot-2.png)
+![screenshot-02](screenshot-02.png)
+  
+![screenshot-07](screenshot-07.png)
 
 ### Optimization Warnings
+
 The extension automatically highlights structs that can be optimized with yellow warning underlines. These warnings appear in the Problems panel and show potential memory savings:
 
 ```
 ⚠️ Struct layout can be optimized: 40 bytes → 24 bytes (saves 16 bytes)
 ```
 
+### GC Pressure Hints
+
+When pointer fields (maps, channels, functions, pointers, strings, slices) are not grouped optimally, the extension shows a hint indicating how many fewer bytes the garbage collector would need to scan:
+
+```
+💡 Struct GC scan range can be reduced: 72 bytes → 48 bytes (reduces GC pressure)
+```
+
+By default these appear as blue hint underlines. Set `goStructAnalyzer.gcPressureSeverityWarning: true` to promote them to yellow warnings instead.
+
+The code lens annotation also reflects GC info when applicable:
+
+```
+ComplexStruct  48 bytes total · GC scan 72→48B
+```
+
 ### Quick Fix: Reorder Fields
 
 When a struct has an optimization warning, a lightbulb appears.
 
-![screenshot-2](screenshot-3.png)
+![screenshot-03](screenshot-03.png)
 
 Apply the fix in one of three ways:
 - Click the lightbulb icon next to the struct name
@@ -88,10 +102,16 @@ type Event struct {         // ✓ 24 bytes
 
 Struct tags, inline comments, and indentation are preserved during reordering.
 
+Two quick fixes may appear when both issues are present:
+
+- **Reorder struct fields to optimize memory layout** — minimizes total struct size
+- **Reorder struct fields to reduce GC scan range** — groups pointer fields toward the front
+
 The quick fix is not offered when:
+
 - The struct is already optimally ordered
 - The struct has only one field
-- The struct contains embedded (anonymous) fields
+- All fields are embedded (anonymous)
 
 ## Configuration
 
@@ -103,10 +123,13 @@ Open VS Code settings and search for "Go Struct Analyzer":
 - `goStructAnalyzer.enableStructOptimizationWarnings`: Show warnings for structs that can be optimized (default: true)
 - `goStructAnalyzer.enableReorderCodeAction`: Show quick fix to reorder struct fields (default: true)
 - `goStructAnalyzer.reorderCodeActionPreferred`: Mark reorder as preferred fix — enables auto-apply via `source.fixAll` (default: false)
+- `goStructAnalyzer.enableGCPressureWarnings`: Show hints for structs where reordering pointer fields reduces GC scan range (default: true)
+- `goStructAnalyzer.gcPressureSeverityWarning`: Show GC pressure issues as warnings (yellow underline) instead of hints (default: false)
 
 ## Supported Types
 
 ### Basic Types
+
 - `bool`, `int8`/`uint8`/`byte`, `int16`/`uint16`
 - `int32`/`uint32`/`rune`, `int64`/`uint64`
 - `float32`/`float64`, `complex64`/`complex128`
@@ -114,6 +137,7 @@ Open VS Code settings and search for "Go Struct Analyzer":
 - `string`
 
 ### Composite Types
+
 - Pointers (`*T`)
 - Arrays (`[N]T`)
 - Slices (`[]T`)
@@ -171,11 +195,13 @@ This generates a `go-struct-analyzer-<version>.vsix` file in the project root.
 **3. Install the `.vsix` in VS Code:**
 
 Option A — Command line:
+
 ```bash
 code --install-extension go-struct-analyzer-*.vsix
 ```
 
 Option B — VS Code UI:
+
 1. Open the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`)
 2. Click the `···` menu (top-right of the panel)
 3. Select **Install from VSIX...**
@@ -191,10 +217,11 @@ Option B — VS Code UI:
 ├── src/
 │   ├── extension.ts     # Main extension entry point
 │   ├── parser.ts        # Go struct parsing logic
-│   ├── analyzer.ts      # Size and padding calculations
+│   ├── analyzer.ts      # Size, padding, and GC pointer-bytes calculations
 │   ├── hover.ts         # Hover provider implementation
 │   ├── codelens.ts      # Code lens provider for inline annotations
-│   └── diagnostics.ts   # Diagnostic provider for optimization warnings
+│   ├── diagnostics.ts   # Diagnostic provider for optimization and GC warnings
+│   └── codeaction.ts    # Quick fix provider for field reordering
 ├── package.json         # Extension manifest
 ├── tsconfig.json        # TypeScript configuration
 └── README.md           # This file
@@ -265,6 +292,10 @@ type Example struct {
 }
 ```
 
+## Acknowledgments
+
+- [betteralign](https://github.com/dkorunic/betteralign) — cross-testing against this tool surfaced the GC pointer scan range concept that inspired the GC pressure analysis feature in v1.2.0.
+
 ## Contributing
 
 1. Fork the repository
@@ -279,7 +310,17 @@ MIT License - see LICENSE file for details.
 
 ## Changelog
 
+### 1.2.0
+
+- GC pressure hints — detects structs where grouping pointer fields reduces GC scan range
+- GC-optimal quick fix and side-panel column
+- Two-pass struct resolution — embedded struct types are resolved to their real sizes
+- Recursive pointer classification for embedded struct types
+- Quick fix now available for structs that mix embedded and named fields
+- New settings: `enableGCPressureWarnings`, `gcPressureSeverityWarning`
+
 ### 1.1.0
+
 - Added Quick Fix: "Reorder struct fields to optimize memory layout" — available via `Ctrl+.` on any struct with an optimization warning
 - Quick fix preserves struct tags, inline comments, leading comments, and indentation
 - Analyze panel now shows Current Layout and Optimal Layout side by side
@@ -287,6 +328,7 @@ MIT License - see LICENSE file for details.
 - New settings: `enableReorderCodeAction`, `reorderCodeActionPreferred`
 
 ### 1.0.1
+
 - Added struct layout optimization warnings and suggestions
 - Real-time diagnostics highlighting non-optimal structs
 - Enhanced code lens with optimization hints (e.g., "40 bytes total (can be 32 bytes)")
@@ -296,6 +338,7 @@ MIT License - see LICENSE file for details.
 - Fixed bug: Detailed optimization information tab not shown when clicking on codelens annotation,  `No struct found at cursor position` is shown instead.
 
 ### 1.0.0
+
 - Initial release
 - Basic struct parsing and analysis
 - Hover information and code lens support
