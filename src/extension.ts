@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { GoStructParser } from './parser';
-import { StructAnalyzer } from './analyzer';
+import { StructAnalyzer, StructAnalysis } from './analyzer';
 import { HoverProvider } from './hover';
 import { CodeLensProvider } from './codelens';
 import { StructDiagnosticsProvider } from './diagnostics';
+import { StructReorderCodeActionProvider } from './codeaction';
 
 let globalAnalyzer: StructAnalyzer;
 
@@ -13,30 +14,26 @@ export function activate(context: vscode.ExtensionContext) {
     const parser = new GoStructParser();
     const analyzer = new StructAnalyzer();
     globalAnalyzer = analyzer;
-    
-    // Register hover provider
+
     const hoverProvider = new HoverProvider(parser, analyzer);
     context.subscriptions.push(
         vscode.languages.registerHoverProvider('go', hoverProvider)
     );
 
-    // Register code lens provider
     const codeLensProvider = new CodeLensProvider(parser, analyzer);
     context.subscriptions.push(
         vscode.languages.registerCodeLensProvider('go', codeLensProvider)
     );
 
-    // Register diagnostics provider
     const diagnosticsProvider = new StructDiagnosticsProvider(parser, analyzer);
     context.subscriptions.push(diagnosticsProvider);
-    
-    // Provide diagnostics on file open and save
+
     const provideDiagnostics = (document: vscode.TextDocument) => {
         if (document.languageId === 'go') {
             diagnosticsProvider.provideDiagnostics(document);
         }
     };
-    
+
     context.subscriptions.push(
         vscode.workspace.onDidOpenTextDocument(provideDiagnostics),
         vscode.workspace.onDidSaveTextDocument(provideDiagnostics),
@@ -46,11 +43,17 @@ export function activate(context: vscode.ExtensionContext) {
             }
         })
     );
-    
-    // Provide diagnostics for already open documents
+
     vscode.workspace.textDocuments.forEach(provideDiagnostics);
 
-    // Register command
+    context.subscriptions.push(
+        vscode.languages.registerCodeActionsProvider(
+            { language: 'go', scheme: 'file' },
+            new StructReorderCodeActionProvider(parser, analyzer),
+            { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }
+        )
+    );
+
     const analyzeCommand = vscode.commands.registerCommand(
         'goStructAnalyzer.analyzeStruct',
         async (struct?: any, analysis?: any) => {
@@ -60,16 +63,14 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            // If called from code lens, use provided struct and analysis
             if (struct && analysis) {
                 showStructAnalysis(analysis, struct);
                 return;
             }
 
-            // If called from command palette, find struct at cursor
             const position = editor.selection.active;
             const structs = await parser.parseDocument(editor.document);
-            const structAtPosition = structs.find((s: any) => 
+            const structAtPosition = structs.find((s: any) =>
                 s.range.contains(position)
             );
 
@@ -81,7 +82,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
     );
-    
+
     context.subscriptions.push(analyzeCommand);
 }
 
@@ -97,38 +98,69 @@ function showStructAnalysis(analysis: any, struct?: any) {
 }
 
 function generateAnalysisHTML(analysis: any, struct?: any): string {
+    const canOptimize = struct && globalAnalyzer && globalAnalyzer.canOptimizeStruct(struct);
+    const optimalAnalysis: StructAnalysis | null = canOptimize
+        ? globalAnalyzer.computeOptimalLayout(struct)
+        : null;
+
+    const renderFieldRows = (fields: any[]) =>
+        fields.map((field: any) => `
+            <tr>
+                <td>${field.name}</td>
+                <td>${field.type}</td>
+                <td>${field.size}</td>
+                <td>${field.offset}</td>
+                <td>${field.padding > 0 ? `<span class="padding">${field.padding}</span>` : '0'}</td>
+            </tr>
+        `).join('');
+
+    const currentTable = `
+        <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Size</th><th>Offset</th><th>Padding</th></tr></thead>
+            <tbody>${renderFieldRows(analysis.fields)}</tbody>
+            <tfoot><tr><td colspan="5" class="total">Total: ${analysis.totalSize} bytes (align: ${analysis.alignment})</td></tr></tfoot>
+        </table>`;
+
+    const optimalTable = optimalAnalysis ? `
+        <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Size</th><th>Offset</th><th>Padding</th></tr></thead>
+            <tbody>${renderFieldRows(optimalAnalysis.fields)}</tbody>
+            <tfoot><tr><td colspan="5" class="total">Total: ${optimalAnalysis.totalSize} bytes (align: ${optimalAnalysis.alignment})</td></tr></tfoot>
+        </table>` : '';
+
     return `
         <!DOCTYPE html>
         <html>
         <head>
             <style>
                 body { font-family: monospace; padding: 20px; }
-                .struct-info { margin-bottom: 20px; }
-                .field { display: flex; justify-content: space-between; padding: 4px 0; }
-                .padding { color: #888; font-style: italic; }
-                .total { font-weight: bold; border-top: 1px solid #ccc; padding-top: 8px; }
+                h2 { margin-bottom: 4px; }
+                .banner { margin: 12px 0; padding: 10px; background-color: #1a1a1a; border: 1px solid #ffa500; border-radius: 4px; color: #ffffff; }
+                .banner strong { color: #ffa500; }
+                .banner em { color: #cccccc; }
+                .columns { display: flex; gap: 24px; flex-wrap: wrap; }
+                .column { flex: 1; min-width: 280px; }
+                .column h3 { margin-bottom: 6px; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #333; }
+                th { font-weight: bold; }
+                .padding { color: #e06c75; }
+                .total { font-weight: bold; padding-top: 8px; }
             </style>
         </head>
         <body>
-            <div class="struct-info">
-                <h2>${analysis.name}</h2>
-                <div>Total Size: ${analysis.totalSize} bytes</div>
-                <div>Alignment: ${analysis.alignment} bytes</div>
-                ${struct ? generateOptimizationInfo(struct) : ''}
-            </div>
-            <div class="fields">
-                ${analysis.fields.map((field: any) => `
-                    <div class="field">
-                        <span>${field.name} ${field.type}</span>
-                        <span>${field.size} bytes (offset: ${field.offset})</span>
-                    </div>
-                    ${field.padding > 0 ? `
-                        <div class="field padding">
-                            <span>// padding</span>
-                            <span>${field.padding} bytes</span>
-                        </div>
-                    ` : ''}
-                `).join('')}
+            <h2>${analysis.name}</h2>
+            ${struct ? generateOptimizationInfo(struct) : ''}
+            <div class="columns">
+                <div class="column">
+                    <h3>Current Layout</h3>
+                    ${currentTable}
+                </div>
+                ${optimalAnalysis ? `
+                <div class="column">
+                    <h3>Optimal Layout</h3>
+                    ${optimalTable}
+                </div>` : ''}
             </div>
         </body>
         </html>
@@ -139,16 +171,16 @@ function generateOptimizationInfo(struct: any): string {
     if (!globalAnalyzer || !globalAnalyzer.canOptimizeStruct(struct)) {
         return '';
     }
-    
+
     const currentSize = globalAnalyzer.getTotalStructSize(struct);
     const optimalSize = globalAnalyzer.getOptimalStructSize(struct);
     const savings = currentSize - optimalSize;
-    
+
     return `
-        <div style="margin-top: 10px; padding: 10px; background-color: #1a1a1a; border: 1px solid #ffa500; border-radius: 4px; color: #ffffff;">
-            <strong style="color: #ffa500;">⚠️ Optimization Opportunity</strong><br>
-            <span style="color: #ffffff;">This struct can be optimized from ${currentSize} bytes to ${optimalSize} bytes (saves ${savings} bytes)</span><br>
-            <em style="color: #cccccc;">Reorder fields by alignment: largest alignment first, then by size</em>
+        <div class="banner">
+            <strong>⚠️ Optimization Opportunity</strong><br>
+            <span>This struct can be optimized from ${currentSize} bytes to ${optimalSize} bytes (saves ${savings} bytes)</span><br>
+            <em>Reorder fields by alignment: largest alignment first, then by size</em>
         </div>
     `;
 }

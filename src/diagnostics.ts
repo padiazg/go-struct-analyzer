@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { GoStructParser, GoStruct } from './parser';
 import { StructAnalyzer } from './analyzer';
 
+export const DIAGNOSTIC_CODE_OPTIMIZABLE = 'struct-layout-optimization';
+
 export class StructDiagnosticsProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
     
@@ -74,8 +76,14 @@ export class StructDiagnosticsProvider {
         );
         
         diagnostic.source = 'Go Struct Analyzer';
-        diagnostic.code = 'struct-layout-optimization';
-        
+        diagnostic.code = DIAGNOSTIC_CODE_OPTIMIZABLE;
+        diagnostic.relatedInformation = [
+            new vscode.DiagnosticRelatedInformation(
+                new vscode.Location(document.uri, struct.range),
+                'struct body range'
+            )
+        ];
+
         return diagnostic;
     }
 

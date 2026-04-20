@@ -6,8 +6,9 @@ A VS Code extension that shows memory size and padding information for Go struct
 
 - **Hover Information**: Hover over struct fields to see size, alignment, offset, and padding details
 - **Inline Annotations**: Code lens showing field sizes and padding directly in your editor
-- **Memory Layout Visualization**: Detailed struct memory layout with visual padding representation
+- **Memory Layout Visualization**: Detailed struct memory layout with side-by-side current vs optimal layout
 - **Struct Optimization Warnings**: Real-time diagnostics highlighting structs that can be optimized
+- **Quick Fix**: One-click reorder of struct fields for optimal memory layout (preserves tags, comments, indentation)
 - **Optimization Suggestions**: Shows potential memory savings with optimal field ordering
 - **Architecture Support**: Configurable target architecture (amd64, 386, arm64, arm)
 - **Command Palette**: Analyze struct layout command for detailed breakdown
@@ -29,7 +30,7 @@ type User struct {
 Enable inline annotations to see size information and optimization opportunities directly in your code:
 
 ```go
-type User struct {      // 32 bytes total (can be 25 bytes)
+type User struct {      // 32 bytes total (already optimal)
     ID       uint64     // 8B
     Name     string     // 16B
     Active   bool       // 1B (+7B padding)
@@ -47,17 +48,61 @@ Click on any struct's code lens annotation or use the "Analyze Struct Layout" co
 The extension automatically highlights structs that can be optimized with yellow warning underlines. These warnings appear in the Problems panel and show potential memory savings:
 
 ```
-⚠️ Struct layout can be optimized: 40 bytes → 25 bytes (saves 15 bytes)
+⚠️ Struct layout can be optimized: 40 bytes → 24 bytes (saves 16 bytes)
 ```
+
+### Quick Fix: Reorder Fields
+
+When a struct has an optimization warning, a lightbulb appears.
+
+![screenshot-2](screenshot-3.png)
+
+Apply the fix in one of three ways:
+- Click the lightbulb icon next to the struct name
+- Press `Ctrl+.` / `Cmd+.` with the cursor on the struct
+- Open the Command Palette and choose "Quick Fix..."
+
+**Before:**
+```go
+type Event struct {         // ⚠️ 40 bytes (can be 24 bytes)
+    A bool
+    B int64
+    C bool
+    D int64
+    E int32
+    F bool
+}
+```
+
+**After applying the quick fix:**
+```go
+type Event struct {         // ✓ 24 bytes
+    B int64
+    D int64
+    E int32
+    A bool
+    C bool
+    F bool
+}
+```
+
+Struct tags, inline comments, and indentation are preserved during reordering.
+
+The quick fix is not offered when:
+- The struct is already optimally ordered
+- The struct has only one field
+- The struct contains embedded (anonymous) fields
 
 ## Configuration
 
 Open VS Code settings and search for "Go Struct Analyzer":
 
 - `goStructAnalyzer.showInlineAnnotations`: Show size annotations inline (default: true)
-- `goStructAnalyzer.showPadding`: Highlight padding bytes (default: true)  
+- `goStructAnalyzer.showPadding`: Highlight padding bytes (default: true)
 - `goStructAnalyzer.architecture`: Target architecture for calculations (default: amd64)
 - `goStructAnalyzer.enableStructOptimizationWarnings`: Show warnings for structs that can be optimized (default: true)
+- `goStructAnalyzer.enableReorderCodeAction`: Show quick fix to reorder struct fields (default: true)
+- `goStructAnalyzer.reorderCodeActionPreferred`: Mark reorder as preferred fix — enables auto-apply via `source.fixAll` (default: false)
 
 ## Supported Types
 
@@ -79,21 +124,64 @@ Open VS Code settings and search for "Go Struct Analyzer":
 
 ## Installation
 
-### From Source
+### VS Code Marketplace
 
-1. Clone this repository
-2. Run `npm install` to install dependencies
-3. Run `npm run compile` to build the extension
-4. Press F5 to launch a new VS Code window with the extension loaded
-
-### Building VSIX Package
+Search for **Go Struct Analyzer** in the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`), or install directly:
 
 ```bash
-npm install -g vsce
+code --install-extension PatricioDiaz.go-struct-analyzer
+```
+
+[View on VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=PatricioDiaz.go-struct-analyzer)
+
+### Open VSX (VSCodium / Eclipse Theia / Gitpod)
+
+Search for **Go Struct Analyzer** in your editor's Extensions panel, or download from:
+
+[View on Open VSX Registry](https://open-vsx.org/extension/PatricioDiaz/go-struct-analyzer)
+
+### From Source (Development)
+
+```bash
+git clone https://github.com/padiazg/go-struct-analyzer
+cd go-struct-analyzer
+npm install
+npm run compile
+```
+
+Press `F5` in VS Code to open a new Extension Development Host window with the extension loaded.
+
+### Build and Install Locally
+
+**1. Install packaging tool (once):**
+
+```bash
+npm install -g @vscode/vsce
+```
+
+**2. Compile and package:**
+
+```bash
+npm run compile
 vsce package
 ```
 
-Then install the generated `.vsix` file in VS Code.
+This generates a `go-struct-analyzer-<version>.vsix` file in the project root.
+
+**3. Install the `.vsix` in VS Code:**
+
+Option A — Command line:
+```bash
+code --install-extension go-struct-analyzer-*.vsix
+```
+
+Option B — VS Code UI:
+1. Open the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+2. Click the `···` menu (top-right of the panel)
+3. Select **Install from VSIX...**
+4. Pick the generated `.vsix` file
+
+**4. Reload VS Code** after installation (`Ctrl+Shift+P` → "Developer: Reload Window").
 
 ## Development
 
@@ -119,6 +207,7 @@ Then install the generated `.vsix` file in VS Code.
 - **HoverProvider**: Provides detailed information on hover
 - **CodeLensProvider**: Shows inline size annotations and optimization suggestions
 - **StructDiagnosticsProvider**: Provides real-time optimization warnings
+- **StructReorderCodeActionProvider**: Quick fix that rewrites struct field order in-place
 
 ### Architecture Notes
 
@@ -138,7 +227,7 @@ Size calculations vary by target architecture:
 
 **Before optimization (shows warning):**
 ```go
-type BadLayout struct {  // 40 bytes total (can be 25 bytes) ⚠️
+type BadLayout struct {  // 40 bytes total (can be 24 bytes) ⚠️
     A bool     // 1B
     B int64    // 8B (+7B padding)
     C bool     // 1B  
@@ -150,7 +239,7 @@ type BadLayout struct {  // 40 bytes total (can be 25 bytes) ⚠️
 
 **After optimization (no warning):**
 ```go
-type GoodLayout struct { // 25 bytes total
+type GoodLayout struct { // 24 bytes total
     B int64    // 8B
     D int64    // 8B  
     E int32    // 4B
@@ -189,6 +278,13 @@ type Example struct {
 MIT License - see LICENSE file for details.
 
 ## Changelog
+
+### 1.1.0
+- Added Quick Fix: "Reorder struct fields to optimize memory layout" — available via `Ctrl+.` on any struct with an optimization warning
+- Quick fix preserves struct tags, inline comments, leading comments, and indentation
+- Analyze panel now shows Current Layout and Optimal Layout side by side
+- Supports generic structs (`type Foo[T any] struct`)
+- New settings: `enableReorderCodeAction`, `reorderCodeActionPreferred`
 
 ### 1.0.1
 - Added struct layout optimization warnings and suggestions

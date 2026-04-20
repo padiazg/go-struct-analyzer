@@ -188,7 +188,7 @@ export class StructAnalyzer {
         return analysis.totalSize;
     }
 
-    private getOptimalFieldOrder(fields: GoField[]): GoField[] {
+    getOptimalFieldOrder(fields: GoField[]): GoField[] {
         const fieldsWithInfo = fields.map(field => ({
             field,
             typeInfo: this.getTypeInfo(field.type)
@@ -198,10 +198,18 @@ export class StructAnalyzer {
             if (a.typeInfo.alignment !== b.typeInfo.alignment) {
                 return b.typeInfo.alignment - a.typeInfo.alignment;
             }
-            return b.typeInfo.size - a.typeInfo.size;
+            if (a.typeInfo.size !== b.typeInfo.size) {
+                return b.typeInfo.size - a.typeInfo.size;
+            }
+            return a.field.name.localeCompare(b.field.name);
         });
 
         return fieldsWithInfo.map(item => item.field);
+    }
+
+    computeOptimalLayout(goStruct: GoStruct): StructAnalysis {
+        const optimizedFields = this.getOptimalFieldOrder(goStruct.fields);
+        return this.analyzeStruct({ ...goStruct, fields: optimizedFields });
     }
 
     canOptimizeStruct(goStruct: GoStruct): boolean {
