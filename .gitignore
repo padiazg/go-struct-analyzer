@@ -9,6 +9,7 @@ server/out/
 
 # Rust / Zed extension build
 target/
+extension.wasm
 
 # IDE files
 .vscode/settings.json
