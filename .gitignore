@@ -4,7 +4,12 @@ npm-debug.log*
 
 # Build outputs
 out/
+server/out/
 *.vsix
+
+# Rust / Zed extension build
+target/
+extension.wasm
 
 # IDE files
 .vscode/settings.json

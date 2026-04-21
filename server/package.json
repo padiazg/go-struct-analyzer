@@ -1,0 +1,27 @@
+{
+  "name": "go-struct-analyzer-lsp",
+  "version": "1.2.0",
+  "description": "LSP server for Go Struct Analyzer – reports size, padding, and alignment for Go structs",
+  "author": "Patricio Diaz <padiazg@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/padiazg/go-struct-analyzer"
+  },
+  "main": "out/server.js",
+  "bin": {
+    "go-struct-analyzer-lsp": "out/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "watch": "tsc -watch -p ."
+  },
+  "dependencies": {
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "typescript": "^5.0.0"
+  }
+}

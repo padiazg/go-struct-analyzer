@@ -1,0 +1,11 @@
+id = "go-struct-analyzer"
+name = "Go Struct Analyzer"
+version = "1.2.0"
+description = "Shows size, padding, and alignment information for Go structs"
+authors = ["Patricio Diaz <padiazg@gmail.com>"]
+repository = "https://github.com/padiazg/go-struct-analyzer"
+schema_version = 1
+
+[language_servers.go-struct-analyzer]
+name = "Go Struct Analyzer"
+languages = ["Go"]

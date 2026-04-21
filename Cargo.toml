@@ -1,0 +1,11 @@
+[package]
+name = "go-struct-analyzer"
+version = "1.2.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "0.4"
