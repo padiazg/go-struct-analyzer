@@ -72,11 +72,13 @@ When a struct has an optimization warning, a lightbulb appears.
 ![screenshot-03](screenshot-03.png)
 
 Apply the fix in one of three ways:
+
 - Click the lightbulb icon next to the struct name
 - Press `Ctrl+.` / `Cmd+.` with the cursor on the struct
 - Open the Command Palette and choose "Quick Fix..."
 
 **Before:**
+
 ```go
 type Event struct {         // ⚠️ 40 bytes (can be 24 bytes)
     A bool
@@ -89,6 +91,7 @@ type Event struct {         // ⚠️ 40 bytes (can be 24 bytes)
 ```
 
 **After applying the quick fix:**
+
 ```go
 type Event struct {         // ✓ 24 bytes
     B int64
@@ -213,7 +216,7 @@ Option B — VS Code UI:
 
 ### Project Structure
 
-```
+```shell
 ├── src/
 │   ├── extension.ts     # Main extension entry point
 │   ├── parser.ts        # Go struct parsing logic
@@ -245,6 +248,7 @@ The extension calculates struct layouts based on Go's memory alignment rules:
 - Final struct size is padded to be a multiple of its alignment
 
 Size calculations vary by target architecture:
+
 - **amd64/arm64**: Pointers are 8 bytes, `int`/`uint` are 8 bytes
 - **386/arm**: Pointers are 4 bytes, `int`/`uint` are 4 bytes
 
@@ -253,6 +257,7 @@ Size calculations vary by target architecture:
 ### Memory Layout Optimization
 
 **Before optimization (shows warning):**
+
 ```go
 type BadLayout struct {  // 40 bytes total (can be 24 bytes) ⚠️
     A bool     // 1B
@@ -265,6 +270,7 @@ type BadLayout struct {  // 40 bytes total (can be 24 bytes) ⚠️
 ```
 
 **After optimization (no warning):**
+
 ```go
 type GoodLayout struct { // 24 bytes total
     B int64    // 8B
@@ -309,6 +315,11 @@ type Example struct {
 MIT License - see LICENSE file for details.
 
 ## Changelog
+
+### 1.3.0
+
+- Standard library type seeding — `time.Time`, `reflect.Value`, `reflect.Type`, `token.Position` sizes are now known exactly
+- Precise ptrdata calculation for arrays, embedded structs, and composite types — replaces coarse pointer classification with exact GC scan byte counts
 
 ### 1.2.0
 

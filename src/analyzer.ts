@@ -17,14 +17,22 @@ export interface StructAnalysis {
     alignment: number;
 }
 
+export interface StdlibTypeInfo {
+    size: number;
+    alignment: number;
+    ptrdata: number;
+}
+
 export class StructAnalyzer {
     private readonly typeSizes: Map<string, { size: number; alignment: number }>;
+    private readonly stdlibTypes: Map<string, StdlibTypeInfo>;
     private architecture: string;
     private structRegistry = new Map<string, GoStruct>();
 
     constructor() {
         this.architecture = this.getArchitecture();
         this.typeSizes = this.initializeTypeSizes();
+        this.stdlibTypes = this.initializeStdlibTypes();
     }
 
     // Call this once per document parse so analyzeStruct can resolve embedded struct sizes.
@@ -75,6 +83,22 @@ export class StructAnalyzer {
         sizes.set('string', { size: ptrSize * 2, alignment: ptrSize }); // ptr + len
         
         return sizes;
+    }
+
+    private initializeStdlibTypes(): Map<string, StdlibTypeInfo> {
+        const ptrSize = this.getPtrSize();
+        const types = new Map<string, StdlibTypeInfo>();
+
+        // token.Position: {Filename string(16) + Offset int(8) + Line int(8) + Column int(8)}
+        types.set('token.Position', { size: 40, alignment: 8, ptrdata: ptrSize });
+        // time.Time: {wall uint64(8) + ext int64(8) + loc *Location(8)}
+        types.set('time.Time', { size: 24, alignment: 8, ptrdata: ptrSize });
+        // reflect.Value: {typ *rtype(8) + ptr unsafe.Pointer(8) + flag uintptr(8)}
+        types.set('reflect.Value', { size: 24, alignment: 8, ptrdata: ptrSize });
+        // reflect.Type: interface (2 pointer words)
+        types.set('reflect.Type', { size: 16, alignment: 8, ptrdata: 2 * ptrSize });
+
+        return types;
     }
 
     analyzeStruct(goStruct: GoStruct): StructAnalysis {
@@ -163,6 +187,18 @@ export class StructAnalyzer {
             return { size: analysis.totalSize, alignment: analysis.alignment };
         }
 
+        // Seeded stdlib types
+        const stdlibType = this.stdlibTypes.get(cleanType);
+        if (stdlibType) {
+            return { size: stdlibType.size, alignment: stdlibType.alignment };
+        }
+        if (baseName !== cleanType) {
+            const stdlibBase = this.stdlibTypes.get(baseName);
+            if (stdlibBase) {
+                return { size: stdlibBase.size, alignment: stdlibBase.alignment };
+            }
+        }
+
         // Fallback: treat as a pointer-sized opaque type
         return { size: ptrSize, alignment: ptrSize };
     }
@@ -226,106 +262,134 @@ export class StructAnalyzer {
         return optimalSize < currentSize;
     }
 
-    // Returns whether a type contains GC-tracked pointers and how:
-    //   'pure'  — every word in the field is a pointer (map, chan, func, *T, interface{})
-    //   'mixed' — first word is a pointer, rest are not (string, slice)
-    //   'none'  — no pointer words (numeric types, bool, arrays of non-pointer types)
-    getPointerClass(type: string, visited: Set<string> = new Set<string>()): 'pure' | 'mixed' | 'none' {
-        if (type.startsWith('*')) return 'pure';
+    // Returns the number of bytes the GC must scan within a type (ptrdata),
+    // matching the semantics of fieldalignment's gcSizes.ptrdata().
+    // This is the range from offset 0 to the last pointer word in the type.
+    private getPtrData(type: string, visited: Set<string>): number {
+        const ptrSize = this.getPtrSize();
 
+        // Single pointer word types
+        if (type.startsWith('*')) return ptrSize;
         const clean = type.trim();
+        if (clean.startsWith('map[') || clean.startsWith('chan ') || clean === 'chan') return ptrSize;
+        if (clean.startsWith('func(')) return ptrSize;
 
-        if (clean.startsWith('map[') || clean.startsWith('chan ') || clean === 'chan') return 'pure';
-        if (clean.startsWith('func(')) return 'pure';
-        if (clean === 'interface{}' || clean === 'any' || clean.startsWith('interface{')) return 'pure';
+        // Interface: both words are pointers (type descriptor + data pointer)
+        if (clean === 'interface{}' || clean === 'any' || clean.startsWith('interface{')) return ptrSize * 2;
 
-        if (clean === 'string') return 'mixed';
-        if (clean.startsWith('[]')) return 'mixed';
+        // String: first word is data pointer, second is length
+        if (clean === 'string') return ptrSize;
 
+        // Slice: first word is data pointer, rest are len + cap
+        if (clean.startsWith('[]')) return ptrSize;
+
+        // Array [N]T
         const arrayMatch = clean.match(/^\[(\d+)\](.+)/);
         if (arrayMatch) {
-            const elemClass = this.getPointerClass(arrayMatch[2], visited);
-            return elemClass === 'none' ? 'none' : 'mixed';
+            const length = parseInt(arrayMatch[1]);
+            const elemType = arrayMatch[2];
+            const elemInfo = this.getTypeInfo(elemType, visited);
+            const elemPtrData = this.getPtrData(elemType, visited);
+            if (elemPtrData === 0) return 0;
+            return (length - 1) * elemInfo.size + elemPtrData;
         }
 
-        if (this.typeSizes.has(clean)) return 'none';
+        // Basic types (numeric, bool) — no pointers
+        if (this.typeSizes.has(clean)) return 0;
 
-        // Unknown / embedded struct: look up registry to determine pointer content.
+        // Seeded stdlib types
+        const stdlib = this.stdlibTypes.get(clean);
+        if (stdlib) return stdlib.ptrdata;
+
+        // Registered struct — recursively compute ptrdata through its fields
         const baseName = clean.includes('.') ? clean.split('.').pop()! : clean;
-        return this.getPointerClassOfStruct(baseName, visited);
-    }
-
-    // Recursively checks if a registered struct type contains any pointer words.
-    // Returns 'none' only when every field (transitively) has no pointers.
-    private getPointerClassOfStruct(name: string, visited: Set<string>): 'pure' | 'mixed' | 'none' {
-        if (visited.has(name)) return 'none'; // cycle guard
-        const struct = this.structRegistry.get(name);
-        if (!struct) return 'mixed'; // not in registry → conservative
-
-        const childVisited = new Set(visited);
-        childVisited.add(name);
-
-        for (const field of struct.fields) {
-            if (this.getPointerClass(field.type, childVisited) !== 'none') {
-                return 'mixed';
-            }
+        if (baseName !== clean) {
+            const stdlibBase = this.stdlibTypes.get(baseName);
+            if (stdlibBase) return stdlibBase.ptrdata;
         }
-        return 'none';
+
+        const struct = this.structRegistry.get(baseName);
+        if (struct && !visited.has(baseName)) {
+            const childVisited = new Set(visited);
+            childVisited.add(baseName);
+            let lastPtrEnd = 0;
+            let currentOffset = 0;
+
+            for (const field of struct.fields) {
+                const ft = this.getTypeInfo(field.type, childVisited);
+                const padding = this.calculatePadding(currentOffset, ft.alignment);
+                currentOffset += padding;
+                const fd = this.getPtrData(field.type, childVisited);
+                if (fd > 0) {
+                    lastPtrEnd = Math.max(lastPtrEnd, currentOffset + fd);
+                }
+                currentOffset += ft.size;
+            }
+            return lastPtrEnd;
+        }
+
+        // Unknown type — conservative: assume one pointer word
+        return ptrSize;
     }
 
     // Number of bytes the GC must scan in the current field order.
-    // Equals the end offset of the last pointer-containing word.
+    // Equals the end offset of the last pointer word.
     calculatePointerBytes(goStruct: GoStruct): number {
         const analysis = this.analyzeStruct(goStruct);
         let lastPtrEnd = 0;
 
         for (const field of analysis.fields) {
-            const cls = this.getPointerClass(field.type);
-            if (cls === 'none') continue;
-
-            if (cls === 'pure') {
-                // All words in this field are pointer words
-                lastPtrEnd = Math.max(lastPtrEnd, field.offset + field.size);
-            } else {
-                // 'mixed': only the first 8-byte word is a pointer
-                lastPtrEnd = Math.max(lastPtrEnd, field.offset + 8);
+            const ptrData = this.getPtrData(field.type, new Set<string>());
+            if (ptrData > 0) {
+                lastPtrEnd = Math.max(lastPtrEnd, field.offset + ptrData);
             }
         }
 
         return lastPtrEnd;
     }
 
-    // Reorder fields to minimise the GC scan range:
-    //   1. alignment DESC          (avoid padding)
-    //   2. pointer class: pure → mixed → none
-    //   3. within mixed: size ASC  (fewer trailing non-ptr words before next ptr field)
-    //   4. within pure/none: size DESC
-    //   5. name ASC
+    // Reorder fields matching fieldalignment's optimalOrder() logic:
+    //   1. zero-sized fields first   (avoids Go 1-byte tail padding)
+    //   2. alignment DESC
+    //   3. pointer-bearing before pointer-free  (ptrdata > 0 first)
+    //   4. within pointer-bearing: trailing non-pointer bytes ASC  (size - ptrdata)
+    //   5. size DESC
+    //   6. name ASC
     getOptimalPointerOrder(fields: GoField[]): GoField[] {
-        const clsRank: Record<string, number> = { pure: 0, mixed: 1, none: 2 };
-
         return [...fields].sort((a, b) => {
             const aInfo = this.getTypeInfo(a.type, new Set<string>());
             const bInfo = this.getTypeInfo(b.type, new Set<string>());
-            const aCls  = this.getPointerClass(a.type);
-            const bCls  = this.getPointerClass(b.type);
+            const aPtr = this.getPtrData(a.type, new Set<string>());
+            const bPtr = this.getPtrData(b.type, new Set<string>());
 
+            // 1. zero-sized fields first
+            const aZero = aInfo.size === 0 ? 0 : 1;
+            const bZero = bInfo.size === 0 ? 0 : 1;
+            if (aZero !== bZero) return aZero - bZero;
+
+            // 2. alignment DESC
             if (aInfo.alignment !== bInfo.alignment) {
                 return bInfo.alignment - aInfo.alignment;
             }
 
-            if (clsRank[aCls] !== clsRank[bCls]) {
-                return clsRank[aCls] - clsRank[bCls];
+            // 3. pointer-bearing before pointer-free
+            const aPtrFlag = aPtr > 0 ? 0 : 1;
+            const bPtrFlag = bPtr > 0 ? 0 : 1;
+            if (aPtrFlag !== bPtrFlag) return aPtrFlag - bPtrFlag;
+
+            // 4. within pointer-bearing: fewer trailing non-pointer bytes first
+            if (aPtr > 0 && bPtr > 0) {
+                const aTrailing = aInfo.size - aPtr;
+                const bTrailing = bInfo.size - bPtr;
+                if (aTrailing !== bTrailing) return aTrailing - bTrailing;
             }
 
-            if (aCls === 'mixed' && aInfo.size !== bInfo.size) {
-                return aInfo.size - bInfo.size; // ASC for mixed
-            }
-
+            // 5. size DESC
             if (aInfo.size !== bInfo.size) {
-                return bInfo.size - aInfo.size; // DESC for pure / none
+                return bInfo.size - aInfo.size;
             }
 
+            // 6. name ASC
             return a.name.localeCompare(b.name);
         });
     }

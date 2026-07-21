@@ -20,3 +20,11 @@ Thumbs.db
 # Claude AI files
 CLAUDE.md
 .claude/
+
+# OpenCode files
+.opencode
+
+*.md
+!CODE_OF_CONDUCT.md
+!CONTRIBUTING.md
+!readme.md
