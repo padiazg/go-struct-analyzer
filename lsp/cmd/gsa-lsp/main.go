@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/padiazg/go-struct-analyzer/lsp/internal/analysis"
-	"github.com/padiazg/go-struct-analyzer/lsp/internal/lsp"
-	"github.com/padiazg/go-struct-analyzer/lsp/internal/version"
+	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/lsp"
+	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/version"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		usage()
+		runLSP()
+		return
 	}
 
 	switch os.Args[1] {

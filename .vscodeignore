@@ -13,6 +13,9 @@ lsp/**
 gsa-lsp
 .goreleaser.yml
 
+## Editors
+editors/
+
 # Build artifacts
 .github/**
 node_modules/**
@@ -34,10 +37,12 @@ test/**
 **/*.spec.ts
 
 # Documentation (keep README and LICENSE)
-changelog.md
-CLAUDE.md
-AGENTS.md
 doc
+*.md
+!readme.md
+# changelog.md
+# CLAUDE.md
+# AGENTS.md
 
 # Temporary files
 *.tmp
