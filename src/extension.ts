@@ -1,226 +1,341 @@
 import * as vscode from 'vscode';
-import { GoStructParser } from './parser';
-import { StructAnalyzer, StructAnalysis } from './analyzer';
-import { HoverProvider } from './hover';
-import { CodeLensProvider } from './codelens';
-import { StructDiagnosticsProvider } from './diagnostics';
-import { StructReorderCodeActionProvider } from './codeaction';
+import { LanguageClient, LanguageClientOptions, ServerOptions, State } from 'vscode-languageclient/node';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as cp from 'child_process';
 
-let globalAnalyzer: StructAnalyzer;
+let client: LanguageClient | undefined;
+let statusItem: vscode.StatusBarItem;
+let outputChannel: vscode.LogOutputChannel;
 
-export function activate(context: vscode.ExtensionContext) {
-    console.log('Go Struct Analyzer is now active!');
+export async function activate(context: vscode.ExtensionContext) {
+	const config = vscode.workspace.getConfiguration('goStructAnalyzer');
 
-    const parser = new GoStructParser();
-    const analyzer = new StructAnalyzer();
-    globalAnalyzer = analyzer;
+	statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+	statusItem.name = 'Go Struct Analyzer Status';
+	statusItem.command = { title: 'Show Output', command: 'goStructAnalyzer.showOutput' };
+	context.subscriptions.push(statusItem);
 
-    const hoverProvider = new HoverProvider(parser, analyzer);
-    context.subscriptions.push(
-        vscode.languages.registerHoverProvider('go', hoverProvider)
-    );
+	outputChannel = vscode.window.createOutputChannel('Go Struct Analyzer', { log: true });
+	context.subscriptions.push(outputChannel);
 
-    const codeLensProvider = new CodeLensProvider(parser, analyzer);
-    context.subscriptions.push(
-        vscode.languages.registerCodeLensProvider('go', codeLensProvider)
-    );
+	context.subscriptions.push(
+		vscode.commands.registerCommand('goStructAnalyzer.showOutput', () => outputChannel.show()),
+	);
 
-    const diagnosticsProvider = new StructDiagnosticsProvider(parser, analyzer);
-    context.subscriptions.push(diagnosticsProvider);
+	const binaryPath = findBinary();
+	if (!binaryPath) {
+		setStatus('notfound');
+		outputChannel.error('gsa-lsp binary not found');
+		outputChannel.info('Install: go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest');
+		outputChannel.show();
+		return;
+	}
 
-    const provideDiagnostics = (document: vscode.TextDocument) => {
-        if (document.languageId === 'go') {
-            diagnosticsProvider.provideDiagnostics(document);
-        }
-    };
+	outputChannel.info(`Binary: ${binaryPath}`);
+	setStatus('starting', binaryPath);
 
-    context.subscriptions.push(
-        vscode.workspace.onDidOpenTextDocument(provideDiagnostics),
-        vscode.workspace.onDidSaveTextDocument(provideDiagnostics),
-        vscode.workspace.onDidChangeTextDocument((event) => {
-            if (event.document.languageId === 'go') {
-                diagnosticsProvider.provideDiagnostics(event.document);
-            }
-        })
-    );
+	const serverOptions: ServerOptions = {
+		run: { command: binaryPath, args: ['lsp'] },
+		debug: { command: binaryPath, args: ['lsp'] },
+	};
 
-    vscode.workspace.textDocuments.forEach(provideDiagnostics);
+	const clientOptions: LanguageClientOptions = {
+		documentSelector: [{ language: 'go', scheme: 'file' }],
+		synchronize: { configurationSection: 'goStructAnalyzer' },
+		initializationOptions: {
+			architecture: config.get('architecture', 'amd64'),
+			gcPressureSeverityWarning: config.get('gcPressureSeverityWarning', false),
+		},
+		outputChannel,
+		traceOutputChannel: outputChannel,
+	};
 
-    context.subscriptions.push(
-        vscode.languages.registerCodeActionsProvider(
-            { language: 'go', scheme: 'file' },
-            new StructReorderCodeActionProvider(parser, analyzer),
-            { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }
-        )
-    );
+	client = new LanguageClient(
+		'goStructAnalyzer',
+		'Go Struct Analyzer',
+		serverOptions,
+		clientOptions,
+	);
 
-    const analyzeCommand = vscode.commands.registerCommand(
-        'goStructAnalyzer.analyzeStruct',
-        async (struct?: any, analysis?: any) => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor || editor.document.languageId !== 'go') {
-                vscode.window.showErrorMessage('Please open a Go file');
-                return;
-            }
+	client.onDidChangeState(e => {
+		if (e.newState === State.Running) {
+			fetchVersion();
+		}
+	});
 
-            if (struct && analysis) {
-                showStructAnalysis(analysis, struct);
-                return;
-            }
+	try {
+		await client.start();
+	} catch (err) {
+		setStatus('error', `${err}`);
+		outputChannel.error(`LSP start failed: ${err}`);
+		outputChannel.show();
+		return;
+	}
 
-            const position = editor.selection.active;
-            const structs = await parser.parseDocument(editor.document);
-            analyzer.setStructRegistry(structs);
-            const structAtPosition = structs.find((s: any) =>
-                s.range.contains(position)
-            );
+	outputChannel.info('LSP server started');
 
-            if (structAtPosition) {
-                const structAnalysis = analyzer.analyzeStruct(structAtPosition);
-                showStructAnalysis(structAnalysis, structAtPosition);
-            } else {
-                vscode.window.showInformationMessage('No struct found at cursor position');
-            }
-        }
-    );
+	if (config.get('showInlineAnnotations', true)) {
+		setupInlineAnnotations(context);
+	}
 
-    context.subscriptions.push(analyzeCommand);
+	context.subscriptions.push(
+		vscode.commands.registerCommand('goStructAnalyzer.analyzeStruct', () => handleAnalyzeCommand()),
+	);
+
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration('goStructAnalyzer')) {
+				if (client) {
+					client.sendNotification('workspace/didChangeConfiguration', { settings: {} });
+				}
+			}
+		}),
+	);
 }
 
-function showStructAnalysis(analysis: any, struct?: any) {
-    const panel = vscode.window.createWebviewPanel(
-        'structAnalysis',
-        `Struct Memory Layout - ${analysis.name}`,
-        vscode.ViewColumn.Beside,
-        {}
-    );
-
-    panel.webview.html = generateAnalysisHTML(analysis, struct);
+function setStatus(state: 'starting' | 'running' | 'error' | 'notfound', detail?: string) {
+	switch (state) {
+		case 'starting':
+			statusItem.text = '$(sync~spin) GSA-LSP...';
+			statusItem.tooltip = detail || 'Starting LSP server...';
+			break;
+		case 'running':
+			statusItem.text = `$(check) GSA-LSP ${detail || ''}`;
+			statusItem.tooltip = detail || 'LSP server running';
+			break;
+		case 'error':
+			statusItem.text = '$(error) GSA-LSP';
+			statusItem.tooltip = detail || 'LSP server error';
+			break;
+		case 'notfound':
+			statusItem.text = '$(circle-slash) GSA-LSP';
+			statusItem.tooltip = 'Binary not found. Install: go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest';
+			break;
+	}
+	statusItem.show();
 }
 
-function generateAnalysisHTML(analysis: any, struct?: any): string {
-    let canOptimize = false;
-    let canReduceGC = false;
-    let sizeOptimal: StructAnalysis | null = null;
-    let gcOptimal: StructAnalysis | null = null;
-    let currentPB = 0;
-    let gcOptimalPB = 0;
-    let sizeOptimalPB = 0;
-
-    if (struct && globalAnalyzer) {
-        try { canOptimize = globalAnalyzer.canOptimizeStruct(struct); } catch (_) {}
-        try { canReduceGC = globalAnalyzer.canReducePointerBytes(struct); } catch (_) {}
-        try { if (canOptimize) sizeOptimal = globalAnalyzer.computeOptimalLayout(struct); } catch (_) {}
-        try { if (canReduceGC) gcOptimal = globalAnalyzer.computeGCOptimalLayout(struct); } catch (_) {}
-        try { currentPB = globalAnalyzer.calculatePointerBytes(struct); } catch (_) {}
-        try {
-            if (sizeOptimal) {
-                sizeOptimalPB = globalAnalyzer.calculatePointerBytes(
-                    { ...struct, fields: globalAnalyzer.getOptimalFieldOrder(struct.fields) }
-                );
-            }
-        } catch (_) {}
-        try { if (gcOptimal) gcOptimalPB = globalAnalyzer.getOptimalPointerBytes(struct); } catch (_) {}
-    }
-
-    const renderFieldRows = (fields: any[]) =>
-        fields.map((field: any) => `
-            <tr>
-                <td>${field.name}</td>
-                <td>${field.type}</td>
-                <td>${field.size}</td>
-                <td>${field.offset}</td>
-                <td>${field.padding > 0 ? `<span class="padding">${field.padding}</span>` : '0'}</td>
-            </tr>
-        `).join('');
-
-    const renderTable = (a: StructAnalysis, ptrBytes: number) => `
-        <table>
-            <thead><tr><th>Field</th><th>Type</th><th>Size</th><th>Offset</th><th>Padding</th></tr></thead>
-            <tbody>${renderFieldRows(a.fields)}</tbody>
-            <tfoot>
-                <tr><td colspan="5" class="total">Total: ${a.totalSize} bytes (align: ${a.alignment})</td></tr>
-                ${ptrBytes > 0 ? `<tr><td colspan="5" class="gc-bytes">GC scan: ${ptrBytes} bytes</td></tr>` : ''}
-            </tfoot>
-        </table>`;
-
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body { font-family: monospace; padding: 20px; }
-                h2 { margin-bottom: 4px; }
-                .banner { margin: 12px 0; padding: 10px; background-color: #1a1a1a; border-radius: 4px; color: #ffffff; }
-                .banner-warn { border: 1px solid #ffa500; }
-                .banner-warn strong { color: #ffa500; }
-                .banner-hint { border: 1px solid #5599ff; }
-                .banner-hint strong { color: #5599ff; }
-                .banner em { color: #cccccc; }
-                .columns { display: flex; gap: 24px; flex-wrap: wrap; }
-                .column { flex: 1; min-width: 280px; }
-                .column h3 { margin-bottom: 6px; }
-                table { border-collapse: collapse; width: 100%; }
-                th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #333; }
-                th { font-weight: bold; }
-                .padding { color: #e06c75; }
-                .total { font-weight: bold; padding-top: 8px; }
-                .gc-bytes { color: #5599ff; font-size: 0.9em; padding-top: 2px; }
-            </style>
-        </head>
-        <body>
-            <h2>${analysis.name}</h2>
-            ${struct ? generateOptimizationInfo(struct) : ''}
-            <div class="columns">
-                <div class="column">
-                    <h3>Current Layout</h3>
-                    ${renderTable(analysis, currentPB)}
-                </div>
-                ${sizeOptimal ? `
-                <div class="column">
-                    <h3>Size-Optimal Layout</h3>
-                    ${renderTable(sizeOptimal, sizeOptimalPB)}
-                </div>` : ''}
-                ${gcOptimal ? `
-                <div class="column">
-                    <h3>GC-Optimal Layout</h3>
-                    ${renderTable(gcOptimal, gcOptimalPB)}
-                </div>` : ''}
-            </div>
-        </body>
-        </html>
-    `;
+async function fetchVersion() {
+	try {
+		const info: any = await client!.sendRequest('$/version');
+		const ver = info?.version || '?';
+		const commit = info?.commit || '';
+		const detail = commit ? `${ver} (${commit.slice(0, 7)})` : ver;
+		setStatus('running', `v${ver}`);
+		statusItem.tooltip = `Go Struct Analyzer v${detail}`;
+		outputChannel.info(`Version: v${detail}`);
+	} catch {
+		setStatus('running');
+		outputChannel.warn('Version fetch failed (server may not support $/version)');
+	}
 }
 
-function generateOptimizationInfo(struct: any): string {
-    if (!globalAnalyzer) return '';
+function findBinary(): string | undefined {
+	const binaryName = process.platform === 'win32' ? 'gsa-lsp.exe' : 'gsa-lsp';
 
-    const banners: string[] = [];
+	try {
+		const gopath = cp.execSync('go env GOPATH', { encoding: 'utf8' }).trim();
+		if (gopath) {
+			const p = path.join(gopath, 'bin', binaryName);
+			if (fs.existsSync(p)) return p;
+		}
+	} catch { }
 
-    if (globalAnalyzer.canOptimizeStruct(struct)) {
-        const currentSize = globalAnalyzer.getTotalStructSize(struct);
-        const optimalSize = globalAnalyzer.getOptimalStructSize(struct);
-        const savings = currentSize - optimalSize;
-        banners.push(`
-            <div class="banner banner-warn">
-                <strong>⚠️ Memory Layout</strong><br>
-                <span>${currentSize} bytes → ${optimalSize} bytes (saves ${savings} bytes)</span><br>
-                <em>Reorder fields by alignment: largest first, then by size</em>
-            </div>`);
-    }
+	try {
+		const which = cp.execSync(`which ${binaryName}`, { encoding: 'utf8' }).trim();
+		if (which) return which;
+	} catch { }
 
-    if (globalAnalyzer.canReducePointerBytes(struct)) {
-        const currentPB = globalAnalyzer.calculatePointerBytes(struct);
-        const optimalPB = globalAnalyzer.getOptimalPointerBytes(struct);
-        banners.push(`
-            <div class="banner banner-hint">
-                <strong>💡 GC Pressure</strong><br>
-                <span>GC scan range: ${currentPB} bytes → ${optimalPB} bytes</span><br>
-                <em>Group pointer fields (map, chan, func, *, string, slice) before non-pointer fields</em>
-            </div>`);
-    }
+	try {
+		const gobin = cp.execSync('go env GOBIN', { encoding: 'utf8' }).trim();
+		if (gobin) {
+			const p = path.join(gobin, binaryName);
+			if (fs.existsSync(p)) return p;
+		}
+	} catch { }
 
-    return banners.join('\n');
+	return undefined;
 }
 
-export function deactivate() {}
+function setupInlineAnnotations(context: vscode.ExtensionContext) {
+	const sizeDecoration = vscode.window.createTextEditorDecorationType({});
+
+	const paddingDecoration = vscode.window.createTextEditorDecorationType({
+		backgroundColor: 'rgba(255, 80, 80, 0.12)',
+		isWholeLine: true,
+	});
+
+	context.subscriptions.push(sizeDecoration, paddingDecoration);
+
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const update = async () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor || editor.document.languageId !== 'go' || !client || !client.isRunning()) {
+			return;
+		}
+
+		try {
+			const data: any = await client.sendRequest('$/structData', {
+				textDocument: { uri: editor.document.uri.toString() },
+			});
+
+			if (!data || !data.structs) {
+				editor.setDecorations(sizeDecoration, []);
+				editor.setDecorations(paddingDecoration, []);
+				return;
+			}
+
+			const sizeOpts: vscode.DecorationOptions[] = [];
+			const paddingOpts: vscode.DecorationOptions[] = [];
+
+			for (const st of data.structs) {
+				for (const field of st.fields) {
+					if (!field.line) continue;
+					const lineIdx = field.line - 1;
+					const lineText = editor.document.lineAt(lineIdx);
+
+					sizeOpts.push({
+						range: new vscode.Range(lineIdx, lineText.text.length, lineIdx, lineText.text.length),
+						renderOptions: {
+							after: {
+								contentText: `// ${field.size}B (off:${field.offset})`,
+								color: '#888888',
+							},
+						},
+					});
+
+					if (field.padding > 0 && vscode.workspace.getConfiguration('goStructAnalyzer').get('showPadding', true)) {
+						paddingOpts.push({
+							range: new vscode.Range(lineIdx - 1, 0, lineIdx, 0),
+							hoverMessage: `+${field.padding}B padding before ${field.name}`,
+						});
+					}
+				}
+
+				const lastField = st.fields[st.fields.length - 1];
+				if (lastField && lastField.line) {
+					const endOff = lastField.offset + lastField.size;
+					if (endOff < st.totalSize) {
+						const finalPad = st.totalSize - endOff;
+						const lastLineIdx = lastField.line - 1;
+						const line = editor.document.lineAt(lastLineIdx);
+						sizeOpts.push({
+							range: new vscode.Range(lastLineIdx, line.text.length, lastLineIdx, line.text.length),
+							renderOptions: {
+								after: {
+									contentText: ` // +${finalPad}B padding`,
+									color: '#e06c75',
+								},
+							},
+						});
+					}
+				}
+			}
+
+			editor.setDecorations(sizeDecoration, sizeOpts);
+			editor.setDecorations(paddingDecoration, paddingOpts);
+		} catch { }
+	};
+
+	const schedule = () => {
+		if (timer) clearTimeout(timer);
+		timer = setTimeout(update, 300);
+	};
+
+	context.subscriptions.push(
+		vscode.window.onDidChangeActiveTextEditor(schedule),
+		vscode.workspace.onDidChangeTextDocument(e => { if (e.document.languageId === 'go') schedule(); }),
+		vscode.workspace.onDidSaveTextDocument(e => { if (e.languageId === 'go') schedule(); }),
+		vscode.window.onDidChangeVisibleTextEditors(schedule),
+	);
+
+	setTimeout(update, 500);
+}
+
+async function handleAnalyzeCommand() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor || editor.document.languageId !== 'go') {
+		vscode.window.showErrorMessage('Open a Go file first');
+		return;
+	}
+
+	if (!client || !client.isRunning()) {
+		vscode.window.showErrorMessage('Go Struct Analyzer LSP not running');
+		return;
+	}
+
+	try {
+		const data: any = await client.sendRequest('$/structData', {
+			textDocument: { uri: editor.document.uri.toString() },
+		});
+
+		if (!data || !data.structs || data.structs.length === 0) {
+			vscode.window.showInformationMessage('No structs found in file');
+			return;
+		}
+
+		const panel = vscode.window.createWebviewPanel(
+			'goStructAnalyzer',
+			'Struct Analysis',
+			vscode.ViewColumn.Beside,
+			{ enableScripts: false },
+		);
+
+		panel.webview.html = renderAnalysisWebview(data);
+	} catch (err) {
+		vscode.window.showErrorMessage(`Analysis failed: ${err}`);
+	}
+}
+
+function renderAnalysisWebview(data: any): string {
+	const renderFields = (fields: any[]) =>
+		fields.map((f: any) =>
+			`<tr><td>${f.name}</td><td>${f.type}</td><td>${f.size}</td><td>${f.offset}</td><td>${f.padding > 0 ? `<span class="pad">${f.padding}</span>` : '0'}</td></tr>`
+		).join('');
+
+	const renderStruct = (st: any) => {
+		const canReduce = st.optimalSize < st.totalSize;
+		const canReduceGC = st.optimalPointerBytes < st.pointerBytes;
+		return `
+		<div class="struct">
+			<h2>struct ${st.name}</h2>
+			<table>
+				<thead><tr><th>Field</th><th>Type</th><th>Size</th><th>Offset</th><th>Padding</th></tr></thead>
+				<tbody>${renderFields(st.fields)}</tbody>
+				<tfoot>
+					<tr><td colspan="5" class="total">Total: ${st.totalSize}B (align: ${st.alignment})</td></tr>
+					${st.pointerBytes > 0 ? `<tr><td colspan="5" class="gc">GC scan: ${st.pointerBytes}B</td></tr>` : ''}
+				</tfoot>
+			</table>
+			${canReduce ? `<div class="warn">⚠ ${st.totalSize}B → ${st.optimalSize}B (save ${st.totalSize - st.optimalSize}B)</div>` : ''}
+			${canReduceGC ? `<div class="hint">💡 GC: ${st.pointerBytes}B → ${st.optimalPointerBytes}B</div>` : ''}
+			${canReduce ? `<details><summary>Optimal Layout (${st.optimalSize}B)</summary><table><thead><tr><th>Field</th><th>Type</th><th>Size</th><th>Offset</th></tr></thead><tbody>${renderFields(st.optimalFields)}</tbody></table></details>` : ''}
+		</div>`;
+	};
+
+	return `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+	body { font-family: monospace; padding: 20px; }
+	.struct { margin-bottom: 24px; }
+	h2 { margin: 0 0 8px; }
+	table { border-collapse: collapse; width: 100%; }
+	th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--vscode-editor-lineHighlightBackground); }
+	.total { font-weight: bold; padding-top: 8px; }
+	.gc { color: #5599ff; font-size: 0.9em; }
+	.pad { color: #e06c75; }
+	.warn { margin: 8px 0; padding: 8px; background: rgba(255,165,0,0.15); border: 1px solid orange; border-radius: 4px; }
+	.hint { margin: 8px 0; padding: 8px; background: rgba(85,153,255,0.15); border: 1px solid #5599ff; border-radius: 4px; }
+	details { margin-top: 8px; }
+	summary { cursor: pointer; font-weight: bold; }
+</style></head><body>
+<h1>Go Struct Analysis</h1>
+${data.structs.map(renderStruct).join('\n')}
+</body></html>`;
+}
+
+export function deactivate(): Thenable<void> | undefined {
+	if (!client) return undefined;
+	return client.stop();
+}

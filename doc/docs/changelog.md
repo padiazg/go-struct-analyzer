@@ -1,6 +1,8 @@
-# Change Log
+# Changelog
 
-All notable changes to the "go-struct-analyzer" extension will be documented in this file.
+All notable changes to the Go Struct Analyzer extension will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.0] - 2026-07-21
 
@@ -19,8 +21,6 @@ All notable changes to the "go-struct-analyzer" extension will be documented in 
 - **Build system**: Makefile added (`make build`, `make test`, `make preflight`). Go toolchain required alongside Node.js.
 - **Architecture accuracy**: Size, alignment, and ptrdata now computed by `go/types.SizesFor()`, exactly matching the Go compiler and `fieldalignment`.
 - **Inline annotations**: Rewritten to request data from the Go server via `$/structData` custom request, then apply VS Code decorations accordingly.
-- **Updated CI runtime**: Node.js version bumped from 20 to 22 (LTS) across all workflow files; build matrix expanded to `[22.x, 24.x]`. `@types/node` devDependency updated to 22.x.
-- **Added Dependabot**: Automatic weekly PRs for npm and GitHub Actions dependency updates.
 
 ### Removed
 
@@ -28,6 +28,18 @@ All notable changes to the "go-struct-analyzer" extension will be documented in 
 - **v1.x release history**: The old TS-based engine is discarded. All earlier changelog entries removed to reflect the clean break.
 
 ## Previous Versions
+
+### [1.3.0] - 2026-07-21
+
+#### Added
+
+- **Standard library type seeding**: Pre-seeded exact sizes and GC pointer data for common stdlib types — `time.Time` (24B), `reflect.Value` (24B), `reflect.Type` (16B), `token.Position` (40B). These no longer fall through to opaque pointer-sized estimates, improving layout analysis accuracy for structs referencing them.
+
+#### Changed
+
+- **Precise ptrdata calculation**: Replaced coarse `getPointerClass()` (ternary `pure`/`mixed`/`none`) with `getPtrData()` returning the exact GC scan byte range (`gcSizes.ptrdata()` semantics from `fieldalignment`/`go/analysis`). Arrays now compute `(N-1) * elemSize + elemPtrData` instead of collapsing to `mixed`. Embedded registered structs compute byte-accurate ptrdata through their fields rather than binary pointer-class inheritance.
+- **Updated CI runtime**: Node.js version bumped from 20 to 22 (LTS) across all workflow files; build matrix expanded to `[22.x, 24.x]`. `@types/node` devDependency updated to 22.x.
+- **Added Dependabot**: Automatic weekly PRs for npm and GitHub Actions dependency updates.
 
 ### [1.2.0] - 2026-04-20
 

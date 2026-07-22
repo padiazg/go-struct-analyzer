@@ -5,6 +5,7 @@ npm-debug.log*
 # Build outputs
 out/
 *.vsix
+gsa-lsp
 
 # IDE files
 .vscode/settings.json
@@ -28,3 +29,7 @@ CLAUDE.md
 !CODE_OF_CONDUCT.md
 !CONTRIBUTING.md
 !readme.md
+
+# Documentation site output
+doc/site/
+!doc/**/*.md

@@ -1,0 +1,90 @@
+site_name: Go Struct Analyzer
+site_description: VS Code extension for Go struct memory layout analysis
+site_url: https://padiazg.github.io/go-struct-analyzer
+repo_url: https://github.com/padiazg/go-struct-analyzer
+repo_name: padiazg/go-struct-analyzer
+edit_uri: edit/main/doc/docs/
+
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+  - Usage:
+    - Overview: usage/index.md
+    - Hover Information: usage/hover.md
+    - Inline Annotations: usage/annotations.md
+    - Warnings & Diagnostics: usage/warnings.md
+    - Quick Fix: usage/quick-fix.md
+    - Analyze Panel: usage/analyze-panel.md
+    - Configuration: usage/configuration.md
+  - Concepts:
+    - Overview: concepts/index.md
+    - Memory Alignment: concepts/memory-alignment.md
+    - GC Scan Range: concepts/gc-scan.md
+    - PtrData Calculation: concepts/ptrdata.md
+  - Resources:
+    - resources/index.md
+    - FAQ: resources/faq.md
+    - Known Issues: resources/known-issues.md
+  - Contributing: contributing.md
+  - License: license.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/padiazg/go-struct-analyzer

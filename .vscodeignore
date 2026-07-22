@@ -7,6 +7,12 @@ src/**
 **/*.ts
 **/tsconfig.json
 
+# Go source (only exclude lsp/ source, keep the binary)
+lsp/**
+*.go
+gsa-lsp
+.goreleaser.yml
+
 # Build artifacts
 .github/**
 node_modules/**
@@ -18,6 +24,9 @@ node_modules/**
 webpack.config.js
 .DS_Store
 *.log
+.claude
+.opencode
+Makefile
 
 # Test files
 test/**
@@ -27,14 +36,12 @@ test/**
 # Documentation (keep README and LICENSE)
 changelog.md
 CLAUDE.md
+AGENTS.md
+doc
 
 # Temporary files
 *.tmp
 *.vsix
-
-# Screenshots (keep main screenshot, exclude others)
-screenshot-*.png
-!screenshot.png
 
 # Package files
 package-lock.json

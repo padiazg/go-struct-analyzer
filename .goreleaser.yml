@@ -1,0 +1,83 @@
+# https://goreleaser.com
+
+version: 2
+
+before:
+  hooks:
+    - cd lsp && go mod tidy
+    - cd lsp && go mod download
+
+builds:
+  - main: ./lsp/cmd/gsa-lsp/main.go
+    binary: gsa-lsp
+    dir: lsp
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.version={{.Version}}
+      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.commit={{.Commit}}
+      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.buildDate={{.Date}}
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Enhancements'
+      regexp: '^.*?enhance(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: padiazg
+    name: go-struct-analyzer
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## gsa-lsp {{ .Tag }} Release
+
+    gsa-lsp is a Go struct analyzer LSP server with exact fieldalignment parity.
+
+    ### Installation
+
+    Download the appropriate binary for your platform below, or:
+
+    use Go
+    ```shell
+    go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@{{ .Tag }}
+    ```
+
+  footer: |
+    **Full Changelog**: https://github.com/padiazg/go-struct-analyzer/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    ---
