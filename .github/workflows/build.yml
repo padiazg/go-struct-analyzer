@@ -17,7 +17,7 @@ jobs:
     - name: Build Go LSP server
       run: cd lsp && go build -o ../gsa-lsp ./cmd/gsa-lsp/
     - name: Verify binary
-      run: ./gsa-lsp version
+      run: chmod +x gsa-lsp && ./gsa-lsp version
     - name: Upload Go binary
       uses: actions/upload-artifact@v4
       with:
