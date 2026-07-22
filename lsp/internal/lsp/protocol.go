@@ -87,11 +87,16 @@ type InitializeResult struct {
 	Capabilities ServerCapabilities `json:"capabilities"`
 }
 
+type InlayHintOptions struct {
+	ResolveProvider bool `json:"resolveProvider,omitempty"`
+}
+
 type ServerCapabilities struct {
-	TextDocumentSync   int              `json:"textDocumentSync"`
-	HoverProvider      bool             `json:"hoverProvider"`
-	CodeLensProvider   *CodeLensOptions `json:"codeLensProvider,omitempty"`
-	CodeActionProvider bool             `json:"codeActionProvider"`
+	TextDocumentSync   int               `json:"textDocumentSync"`
+	HoverProvider      bool              `json:"hoverProvider"`
+	InlayHintProvider  *InlayHintOptions `json:"inlayHintProvider,omitempty"`
+	CodeLensProvider   *CodeLensOptions  `json:"codeLensProvider,omitempty"`
+	CodeActionProvider bool              `json:"codeActionProvider"`
 }
 
 type CodeLensOptions struct {
@@ -213,6 +218,38 @@ type TextEdit struct {
 	Range   Range  `json:"range"`
 	NewText string `json:"newText"`
 }
+
+// Constants
+// InlayHint
+
+type InlayHintParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Range        *Range                 `json:"range,omitempty"`
+}
+
+type InlayHint struct {
+	Position     Position             `json:"position"`
+	Label        string               `json:"label"`
+	Kind         *int                 `json:"kind,omitempty"`
+	Tooltip      string               `json:"tooltip,omitempty"`
+	PaddingLeft  bool                 `json:"paddingLeft,omitempty"`
+	PaddingRight bool                 `json:"paddingRight,omitempty"`
+	Data         json.RawMessage      `json:"data,omitempty"`
+}
+
+type InlayHintLabelPart struct {
+	Value    string       `json:"value"`
+	Tooltip  string       `json:"tooltip,omitempty"`
+	Location *Location    `json:"location,omitempty"`
+	Command  *Command     `json:"command,omitempty"`
+}
+
+var (
+	InlayHintKindType      = ptr(1)
+	InlayHintKindParameter = ptr(2)
+)
+
+func ptr[T any](v T) *T { return &v }
 
 // Constants
 const (

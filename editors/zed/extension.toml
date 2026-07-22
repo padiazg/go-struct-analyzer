@@ -1,0 +1,11 @@
+id = "gsa-lsp"
+name = "Go Struct Analyzer"
+description = "Struct memory layout, padding and field alignment analysis via gsa-lsp"
+version = "2.0.0"
+schema_version = 1
+authors = ["Patricio Díaz <padiazg>"]
+repository = "https://github.com/padiazg/go-struct-analyzer"
+
+[language_servers.gsa-lsp]
+name = "gsa-lsp"
+languages = ["Go"]

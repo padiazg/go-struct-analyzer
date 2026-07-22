@@ -12,3 +12,9 @@ The Go Struct Analyzer provides several ways to inspect and optimize struct layo
 | [Configuration](configuration.md) | All settings reference | VS Code settings UI |
 
 Each feature is designed to work without configuration — install the extension and open a Go file.
+
+| Editor | Method |
+| - | - |
+| VS Code | Install the [VS Code extension](../getting-started/installation.md) from Marketplace |
+| Zed | Install the [Zed dev extension](zed-installation.md) from `editors/zed/` |
+| Any LSP client | gsa-lsp speaks standard LSP — configure any editor that supports inlayHint, hover, and diagnostics |

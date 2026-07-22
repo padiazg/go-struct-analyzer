@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/padiazg/go-struct-analyzer/lsp/internal/analysis"
-	"github.com/padiazg/go-struct-analyzer/lsp/internal/version"
+	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/version"
 )
 
 type StructDataParams struct {
@@ -138,6 +138,8 @@ func (s *Server) handleRequest(id json.RawMessage, method string, params []byte)
 		switch method {
 		case "textDocument/hover":
 			err = s.handleHover(params, &result)
+		case "textDocument/inlayHint":
+			err = s.handleInlayHint(params, &result)
 		case "textDocument/codeLens":
 			err = s.handleCodeLens(params, &result)
 		case "textDocument/codeAction":

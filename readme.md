@@ -23,6 +23,16 @@ A VS Code extension that shows memory size and padding information for Go struct
 code --install-extension PatricioDiaz.go-struct-analyzer
 ```
 
+### Install from VSIX (VS Code / Cursor)
+
+Download the `.vsix` from [GitHub Releases](https://github.com/padiazg/go-struct-analyzer/releases):
+
+```bash
+code --install-extension go-struct-analyzer-*.vsix
+```
+
+Cursor: Extensions → "..." → Install from VSIX.
+
 ## Quick Start
 
 Open any Go file. Hover over a struct field to see its layout. When a struct shows a yellow warning, click the lightbulb or press `Ctrl+.` to reorder fields for optimal size:
@@ -67,6 +77,52 @@ Install from source:
 make build-go                               # builds gsa-lsp to project root
 make install                                # copies to $GOPATH/bin
 ```
+
+Install via `go install`:
+
+```bash
+go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest
+```
+
+### LSP Server for Other Editors
+
+`gsa-lsp` is a standard LSP server — use it with any LSP-compatible editor alongside `gopls`:
+
+```bash
+gsa-lsp lsp                                 # stdin/stdout JSON-RPC
+```
+
+Supported LSP methods: `textDocument/hover`, `textDocument/codeLens`, `textDocument/codeAction`, `textDocument/publishDiagnostics`.
+
+**Neovim** (`~/.config/nvim/init.lua`):
+
+```lua
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'go',
+  callback = function()
+    vim.lsp.start({
+      name = 'gsa-lsp',
+      cmd = { 'gsa-lsp', 'lsp' },
+    })
+  end,
+})
+```
+
+**Helix** (`~/.config/helix/languages.toml`):
+
+```toml
+[language-server.gsa-lsp]
+command = "gsa-lsp"
+args = ["lsp"]
+
+[[language]]
+name = "go"
+language-servers = ["gsa-lsp"]
+```
+
+**Zed** (experimental): install the dev extension from [`editors/zed/`](editors/zed/) via `zed: install dev extension`. See [`editors/zed/README.md`](editors/zed/README.md). The binary must be on `PATH`.
+
+> Best experience is the VS Code extension (inline annotations, side panel). Other editors get hover info, diagnostics, and code actions only.
 
 ## Configuration
 

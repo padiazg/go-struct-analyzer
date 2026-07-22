@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/padiazg/go-struct-analyzer/lsp/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/analysis"
 )
 
 func uriToPath(uri string) string {
@@ -44,8 +44,8 @@ func (s *Server) handleInitialize(body []byte, result *any) error {
 
 	if params.InitializationOptions != nil {
 		var opts struct {
-			Architecture               string `json:"architecture"`
-			GcPressureSeverityWarning  bool   `json:"gcPressureSeverityWarning"`
+			Architecture              string `json:"architecture"`
+			GcPressureSeverityWarning bool   `json:"gcPressureSeverityWarning"`
 		}
 		if err := json.Unmarshal(params.InitializationOptions, &opts); err == nil {
 			s.mu.Lock()
@@ -61,6 +61,7 @@ func (s *Server) handleInitialize(body []byte, result *any) error {
 		Capabilities: ServerCapabilities{
 			TextDocumentSync:   SyncFull,
 			HoverProvider:      true,
+			InlayHintProvider:  &InlayHintOptions{ResolveProvider: false},
 			CodeLensProvider:   &CodeLensOptions{ResolveProvider: false},
 			CodeActionProvider: true,
 		},
@@ -311,6 +312,45 @@ func (s *Server) buildStructHover(st analysis.StructInfo) Hover {
 			Value: b.String(),
 		},
 	}
+}
+
+// -- InlayHint ------------------------------------------------------------
+
+func (s *Server) handleInlayHint(body []byte, result *any) error {
+	var params InlayHintParams
+	if err := json.Unmarshal(body, &params); err != nil {
+		return fmt.Errorf("unmarshal inlayHint: %w", err)
+	}
+
+	s.mu.Lock()
+	raw, ok := s.raw[params.TextDocument.URI]
+	s.mu.Unlock()
+	if !ok || raw == nil {
+		*result = []InlayHint{}
+		return nil
+	}
+
+	var hints []InlayHint
+	for _, st := range raw.Structs {
+		for _, f := range st.Fields {
+			label := fmt.Sprintf("[%d] %dB", f.Offset, f.Size)
+			tooltip := fmt.Sprintf("type: %s\noffset: %d\nsize: %d\nalign: %d", f.Type, f.Offset, f.Size, f.Alignment)
+			if f.Padding > 0 {
+				label = fmt.Sprintf("+%dpad %s", f.Padding, label)
+				tooltip += fmt.Sprintf("\npreceding padding: %d", f.Padding)
+			}
+			hints = append(hints, InlayHint{
+				Position:    Position{Line: f.Line - 1, Character: 200},
+				Label:       label,
+				Kind:        InlayHintKindType,
+				PaddingLeft: true,
+				Tooltip:     tooltip,
+			})
+		}
+	}
+
+	*result = hints
+	return nil
 }
 
 // -- CodeLens -------------------------------------------------------------

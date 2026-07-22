@@ -186,6 +186,15 @@ Matches `fieldalignment` exactly:
 - [ ] No debug output left in production code
 - [ ] `package.json` version unchanged (maintainer handles versions)
 
+## Zed Extension
+
+An experimental Zed extension lives at [`editors/zed/`](editors/zed/). Install as a dev extension:
+
+1. `zed: install dev extension` → point to `editors/zed/`
+2. `gsa-lsp` must be on `PATH` (`go install` or `make install`)
+
+The extension registers `gsa-lsp` as an additional language server for Go, running alongside `gopls`. See [`editors/zed/README.md`](editors/zed/README.md).
+
 ## Version and Release
 
 Maintainer handles releases. Suggest semver increment in PR:

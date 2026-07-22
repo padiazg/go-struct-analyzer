@@ -7,6 +7,8 @@ out/
 *.vsix
 /gsa-lsp
 lsp/gsa-lsp
+editors/zed/target/
+editors/zed/extension.wasm
 
 # IDE files
 .vscode/settings.json

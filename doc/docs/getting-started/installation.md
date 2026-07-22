@@ -64,6 +64,10 @@ code --install-extension go-struct-analyzer-*.vsix
 
 **Reload VS Code** after installation (`Ctrl+Shift+P` → "Developer: Reload Window").
 
+## Zed Editor
+
+gsa-lsp can also be used in Zed via a dev extension. See [Zed installation guide](../usage/zed-installation.md).
+
 ## Standalone CLI
 
 The extension ships `gsa-lsp` — a Go binary for struct analysis outside VS Code:

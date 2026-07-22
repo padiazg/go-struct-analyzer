@@ -71,6 +71,7 @@ nav:
     - Quick Fix: usage/quick-fix.md
     - Analyze Panel: usage/analyze-panel.md
     - Configuration: usage/configuration.md
+    - Zed Editor: usage/zed-installation.md
   - Concepts:
     - Overview: concepts/index.md
     - Memory Alignment: concepts/memory-alignment.md
