@@ -5,7 +5,8 @@ npm-debug.log*
 # Build outputs
 out/
 *.vsix
-gsa-lsp
+/gsa-lsp
+lsp/gsa-lsp
 
 # IDE files
 .vscode/settings.json

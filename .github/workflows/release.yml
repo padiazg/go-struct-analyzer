@@ -18,55 +18,52 @@ jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: stable
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - uses: goreleaser/goreleaser-action@v6
+      with:
+        distribution: goreleaser
+        version: '~> v2'
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload goreleaser dist
+      uses: actions/upload-artifact@v4
+      with:
+        name: goreleaser-dist
+        path: dist/
+        retention-days: 1
 
   vsix:
     needs: goreleaser
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install vsce
-        run: npm install -g @vscode/vsce
-
-      - name: Compile and build
-        run: npm run compile
-
-      - name: Package extension
-        run: vsce package
-
-      - name: Upload VSIX to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: "*.vsix"
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/checkout@v4
+    - name: Download goreleaser artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: goreleaser-dist
+        path: dist/
+    - name: Verify Go binary
+      run: find dist/ -name 'gsa-lsp' -type f -exec {} version \;
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+    - name: Install dependencies
+      run: npm ci
+    - name: Compile TypeScript
+      run: npm run compile:ts
+    - name: Package extension
+      run: npx -p @vscode/vsce vsce package
+    - name: Upload VSIX to release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: "*.vsix"
+        fail_on_unmatched_files: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

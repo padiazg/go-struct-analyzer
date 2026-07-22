@@ -7,37 +7,50 @@ on:
     branches: [ master, main ]
 
 jobs:
-  build:
+  build-go:
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - name: Build Go LSP server
+      run: cd lsp && go build -o ../gsa-lsp ./cmd/gsa-lsp/
+    - name: Verify binary
+      run: ./gsa-lsp version
+    - name: Upload Go binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: gsa-lsp-linux-amd64
+        path: gsa-lsp
+        retention-days: 1
 
+  build-vsix:
+    needs: build-go
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: [22.x, 24.x]
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+    - uses: actions/checkout@v4
+    - name: Download Go binary
+      uses: actions/download-artifact@v4
+      with:
+        name: gsa-lsp-linux-amd64
+    - name: Verify Go binary
+      run: ./gsa-lsp version
+    - uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-
     - name: Install dependencies
       run: npm ci
-
-    - name: Install vsce
-      run: npm install -g @vscode/vsce
-
     - name: Compile TypeScript
-      run: npm run compile
-
+      run: npm run compile:ts
     - name: Package extension
-      run: vsce package
-
+      run: npx -p @vscode/vsce vsce package
     - name: Upload VSIX Artifact
-      if: matrix.node-version == '20.x'
+      if: matrix.node-version == '22.x'
       uses: actions/upload-artifact@v4
       with:
         name: vsix-build-${{ github.sha }}
