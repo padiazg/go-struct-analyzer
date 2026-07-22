@@ -2,7 +2,8 @@
 
 **Go Struct Analyzer** shows memory size and padding information for Go structs, powered by a **Go LSP backend** (`gsa-lsp`) for exact `fieldalignment` parity.
 
-Available for **VS Code** (extension) and **Zed** (dev extension). Works with any LSP-compatible editor via standard LSP protocol.
+Available for **VS Code** (extension), **Zed** (dev extension), **Emacs** (eglot/lsp-mode),
+and **Neovim** (built-in LSP). Works with any LSP-compatible editor via standard LSP protocol.
 
 > **v2.0.0**: Analysis engine rewritten in Go using `go/types`. Named interfaces correctly sized at 16B instead of 8B. Matches `fieldalignment` exactly.
 
@@ -26,6 +27,10 @@ code --install-extension PatricioDiaz.go-struct-analyzer
 ```
 
 **Zed:** See [Zed installation guide](usage/zed-installation.md).
+
+**Emacs:** See [Emacs setup guide](usage/emacs-installation.md) — eglot (Emacs 29+) or lsp-mode.
+
+**Neovim:** See [Neovim setup guide](usage/neovim-installation.md) — built-in LSP client.
 
 **Any LSP editor:** Point your LSP client to the `gsa-lsp` binary (`go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest`). gsa-lsp speaks standard inlayHint, hover, diagnostics, and codeAction.
 
