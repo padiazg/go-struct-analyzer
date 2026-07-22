@@ -38,7 +38,7 @@ jobs:
       with:
         name: gsa-lsp-linux-amd64
     - name: Verify Go binary
-      run: ./gsa-lsp version
+      run: chmod +x gsa-lsp && ./gsa-lsp version
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
