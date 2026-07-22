@@ -72,6 +72,8 @@ nav:
     - Analyze Panel: usage/analyze-panel.md
     - Configuration: usage/configuration.md
     - Zed Editor: usage/zed-installation.md
+    - Emacs: usage/emacs-installation.md
+    - Neovim: usage/neovim-installation.md
   - Concepts:
     - Overview: concepts/index.md
     - Memory Alignment: concepts/memory-alignment.md

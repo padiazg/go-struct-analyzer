@@ -17,4 +17,6 @@ Each feature is designed to work without configuration — install the extension
 | - | - |
 | VS Code | Install the [VS Code extension](../getting-started/installation.md) from Marketplace |
 | Zed | Install the [Zed dev extension](zed-installation.md) from `editors/zed/` |
+| Emacs | [Emacs setup guide](emacs-installation.md) — eglot (Emacs 29+) or lsp-mode |
+| Neovim | [Neovim setup guide](neovim-installation.md) — built-in LSP client |
 | Any LSP client | gsa-lsp speaks standard LSP — configure any editor that supports inlayHint, hover, and diagnostics |

@@ -94,19 +94,9 @@ gsa-lsp lsp                                 # stdin/stdout JSON-RPC
 
 Supported LSP methods: `textDocument/hover`, `textDocument/codeLens`, `textDocument/codeAction`, `textDocument/publishDiagnostics`.
 
-**Neovim** (`~/.config/nvim/init.lua`):
+**Emacs:** see the [Emacs setup guide](doc/docs/usage/emacs-installation.md) for eglot (Emacs 29+) and lsp-mode.
 
-```lua
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'go',
-  callback = function()
-    vim.lsp.start({
-      name = 'gsa-lsp',
-      cmd = { 'gsa-lsp', 'lsp' },
-    })
-  end,
-})
-```
+**Neovim:** see the [Neovim setup guide](doc/docs/usage/neovim-installation.md) for built-in LSP client config.
 
 **Helix** (`~/.config/helix/languages.toml`):
 
