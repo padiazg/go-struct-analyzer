@@ -1,276 +1,217 @@
-# Contributing to Go Struct Analyzer
+# Go Struct Analyzer — Development Guide
 
-Thank you for your interest in contributing! This document covers everything you need to know to set up your development environment and contribute effectively.
+Developer documentation and contributor guide for the Go Struct Analyzer VS Code extension.
+
+## Prerequisites
+
+- **Go** 1.21+ (for the LSP server)
+- **Node.js** 22+ (for the VS Code extension)
+- **VS Code** (for extension development)
 
 ## Quick Start
 
 ```bash
-# Clone and install dependencies
 git clone https://github.com/padiazg/go-struct-analyzer
 cd go-struct-analyzer
-npm install
-
-# Compile TypeScript
-npm run compile
+make build
 ```
 
-### Running in Development
-
-1. Press **F5** in VS Code to launch an Extension Development Host
-2. Open any Go file to test the extension
-3. Make changes in `src/`, then either:
-   - Run `npm run watch` for live recompilation
-   - Or press **Ctrl+Shift+P** → "Developer: Reload Window" after recompiling
-
-### Building for Local Installation
-
-```bash
-npm run compile
-vsce package
-```
-
-This generates a `.vsix` file you can install via VS Code's "Install from VSIX" option.
-
----
+Press **F5** in VS Code to launch an Extension Development Host window with the extension loaded.
 
 ## Project Structure
 
-| File | Purpose |
-|------|---------|
-| `src/extension.ts` | Main entry point, registers all providers |
-| `src/parser.ts` | Parses Go source to extract struct and field definitions |
-| `src/analyzer.ts` | Calculates sizes, alignments, offsets, padding, and GC pointer bytes |
-| `src/hover.ts` | Hover provider showing field details on mouseover |
-| `src/codelens.ts` | Code lens provider for inline size annotations |
-| `src/diagnostics.ts` | Diagnostic provider for optimization warnings |
-| `src/codeaction.ts` | Quick fix provider for field reordering |
-
-### Key Interfaces
-
-- **GoStruct**: Represents a parsed struct with name, fields, and source location
-- **GoField**: Individual field with name, type, tags, comments, and position info
-- **FieldAnalysis**: Size, alignment, offset, and padding for a single field
-- **StructAnalysis**: Complete analysis including total size, alignment, and all field details
-
----
+| Directory/File | Purpose |
+| - | - |
+| `lsp/` | Go module — the analysis engine and LSP server |
+| `lsp/cmd/gsa-lsp/main.go` | CLI entry (`analyze`, `lsp`, `version` subcommands) |
+| `lsp/internal/analysis/` | Types, layout (size/align/ptrdata), analyzer (`go/packages`), optimizer (`fieldalignment` sort) |
+| `lsp/internal/lsp/` | Protocol types, JSON-RPC server, all LSP method handlers |
+| `lsp/internal/version/` | Ldflags version variables |
+| `src/extension.ts` | VS Code extension entry — LSP client + inline annotations |
+| `Makefile` | Build, test, lint, preflight targets |
+| `test_go_file.go` | Validation structs (BadLayout, GoodLayout, ComplexStruct, ArrayExample) |
+| `test_go_edge-cases.go` | Edge cases (generics, embedded, tags, comments, composite types) |
 
 ## Development Workflow
 
-1. **Edit code** in the `src/` directory
-2. **Recompile** with `npm run compile` or use `npm run watch` for auto-rebuild
-3. **Reload** the Extension Development Host (Ctrl+Shift+P → "Developer: Reload Window")
-4. **Test** by opening Go files and verifying the extension behavior
-5. **Repeat**
-
-### Debugging Tips
-
-- Check the **Output** panel (View → Output, then select "Go Struct Analyzer" from the dropdown) for console.log output
-- Use `console.log()` statements in your code—they appear in the Output panel
-- The extension runs in a separate process; errors may not show in the main Debug Console
-
----
-
-## Testing and Validation
-
-The extension's correctness is validated against Go's built-in `unsafe.Sizeof`. Two test files are included:
-
-### test_go_file.go
-
-Basic validation with common struct patterns:
-
-```go
-type BadLayout struct {
-    A bool    // 1 byte
-    B int64   // 8 bytes (7 bytes padding before)
-    ...
-}
-```
-
-Run this in Go to get actual sizes:
+### Build
 
 ```bash
-go run test_go_file.go
-# Output:
-# BadLayout size: 40
-# GoodLayout size: 24
+make build        # Go binary + TypeScript (full build)
+make build-go     # gsa-lsp binary only
+make build-ts     # TypeScript only
 ```
 
-Then verify the extension's hover/codelens shows matching values.
+### Test
 
-### test_go_edge-cases.go
+```bash
+make test         # Go tests with race detector
+make coverage     # Go tests + coverage report
+```
 
-Comprehensive edge cases covering:
+### Lint and Format
 
-| Case | What it tests |
-|------|---------------|
-| 1 | Already-optimal struct (no quick fix offered) |
-| 2 | Classic padding inefficiency (quick fix offered) |
-| 3 | Single-field struct (no quick fix) |
-| 4 | Empty struct (no quick fix) |
-| 5 | Embedded fields (preserved during reorder) |
-| 6 | Struct tags (preserved with field) |
-| 7 | Inline comments (preserved with field) |
-| 8 | Tags + comments together |
-| 9 | Multiple structs in same file |
-| 10 | Pointers (*Node) |
-| 11 | Composite types ([]string, map, string) |
-| 12 | Fixed arrays |
-| 13 | Generic structs (`type Foo[T any]`) |
-| 14 | Nested structs |
-| 15 | interface{} type |
-| 16 | Channels and functions |
+```bash
+make lint         # golangci-lint (Go)
+make vet          # go vet (Go)
+make fmt          # gofmt (Go)
+make preflight    # vet → fmt → lint → test
+```
 
-Each case documents expected behavior—use these to verify your changes don't break existing functionality.
+### Run the LSP Server
 
-### Validation Checklist
+```bash
+make build-go
+./gsa-lsp analyze test_go_file.go          # CLI analysis (JSON)
+echo '...' | ./gsa-lsp lsp                 # LSP mode (stdin/stdout)
+```
 
-- [ ] Open test_go_file.go in Extension Development Host
-- [ ] Hover over each struct and verify sizes match `go run` output
-- [ ] Verify code lens annotations show correct sizes
-- [ ] Confirm quick fixes are offered only where appropriate (cases 2, 5-16, not 1, 3, 4)
-- [ ] Check that tags and comments are preserved after applying quick fix
+### VS Code Extension Development
 
----
+1. `make build` — compile everything
+2. Press `F5` in VS Code to launch Extension Development Host
+3. Open any `.go` file to see features in action
+4. Check **Output** panel (View → Output, select "Go Struct Analyzer") for LSP logs
 
-## Code Style
+Changes to `src/extension.ts` require a rebuild (`make build-ts`) and reload of the Extension Development Host.
 
-Follow these conventions (from CLAUDE.md):
+Changes to `lsp/` Go code require `make build-go` (or `make build`) and reload.
 
-- **TypeScript**: Strict mode enabled—always use explicit types
-- **File naming**: snake_case (e.g., `go_parser.ts`)
-- **Code naming**:
-  - Variables/functions: camelCase
-  - Classes: PascalCase
-- **Indentation**: 4 spaces
-- **Import order**: vscode imports first, then internal modules
-- **No comments** unless explaining non-obvious behavior
+## Go Module
 
-### TypeScript Config
+The Go code lives entirely in `lsp/` with its own `go.mod`:
 
-The project uses strict TypeScript (`tsconfig.json` has `"strict": true`). If you need to bypass strict checks (rare), use `(param: any)` rather than disabling strict mode.
+```bash
+cd lsp
+go test -race -count=1 ./...
+go vet ./...
+golangci-lint run ./...
+```
 
----
+### LSP Server Architecture
+
+- **JSON-RPC 2.0** over stdin/stdout with Content-Length headers
+- File analysis triggers on `didOpen` / `didSave`
+- Supports: `initialize`, `shutdown`, `textDocument/hover`, `textDocument/codeLens`, `textDocument/codeAction`, `textDocument/didOpen/didChange/didSave/didClose`, `textDocument/publishDiagnostics`, `$/structData`
+- The `$/structData` custom request returns the raw `AnalysisResult` for inline annotations
+
+## Validation
+
+### Against fieldalignment
+
+The Go backend uses `go/types.SizesFor()` and a `ptrdata()` algorithm matching `gcSizes.ptrdata()`:
+
+```bash
+# Verify sizing
+./gsa-lsp analyze test_go_file.go | python3 -m json.tool
+
+# Compare against go-crap structs
+./gsa-lsp analyze /path/to/go-crap/internal/coverage/scanner.go
+```
+
+Known correct values:
+- `Scanner` struct: 40 bytes → 32 bytes (matches fieldalignment "40 ptr bytes → 32")
+- `Options` struct: 80 bytes → 72 bytes (matches fieldalignment "80 ptr bytes → 72")
+
+### Manual VS Code Validation
+
+- [ ] Open `test_go_file.go` in Extension Development Host
+- [ ] Hover over each struct — verify sizes match `./gsa-lsp analyze test_go_file.go`
+- [ ] Code lens shows correct sizes
+- [ ] Diagnostics fire for sub-optimal structs (BadLayout, not GoodLayout)
+- [ ] Quick fix offered for BadLayout, not for GoodLayout
+- [ ] Tags, comments, indentation preserved after reorder
+- [ ] `$/structData` provides correct data (inline annotations render)
 
 ## Architecture Notes
 
-### Go Memory Alignment Rules
+### Go Memory Alignment
 
-The extension implements Go's memory layout algorithm:
-
-1. **Field alignment**: Each field aligns to its natural alignment boundary
-   - `int8`/`bool`: 1 byte
-   - `int16`: 2 bytes
-   - `int32`/`float32`: 4 bytes
-   - `int64`/`float64`/pointers: 8 bytes (amd64/arm64)
-
-2. **Struct alignment**: The largest alignment of any field
-
-3. **Struct size**: Padded to be a multiple of struct alignment
+1. Each field aligns to its natural boundary (size, capped at pointer size)
+2. Struct alignment is the largest field alignment
+3. Struct size is padded to a multiple of its alignment
 
 ### Architecture-Dependent Sizes
 
 | Type | amd64/arm64 | 386/arm |
-|------|-------------|---------|
+| - | - | - |
 | pointer | 8 bytes | 4 bytes |
 | `int`/`uint` | 8 bytes | 4 bytes |
 | `uintptr` | 8 bytes | 4 bytes |
 
-Configure the target architecture via `goStructAnalyzer.architecture` setting.
-
 ### GC Pointer Types
 
-For GC scan range calculations, these types are considered pointers:
+These contain pointers and affect GC scan range:
 
 - `*T` (pointers)
-- `string` (contains pointer to data)
-- `[]T` (slice header contains pointer)
-- `map[K]V` (map header contains pointer)
-- `chan T` (channel header contains pointer)
+- `string` (data pointer)
+- `[]T` (slice header pointer)
+- `map[K]V` (map header pointer)
+- `chan T` (channel header pointer)
 - `func(...)` (function pointer)
-- `interface{}` (contains two pointers)
+- `interface{}` / named interfaces (two pointers: type + data)
 
-Grouping these at the start of a struct reduces the bytes the garbage collector must scan.
+### Field Reorder Sort Order
 
----
+Matches `fieldalignment` exactly:
+
+1. Zero-sized fields first
+2. Descending alignment
+3. Pointer-bearing before pointer-free (same alignment)
+4. Trailing non-pointer: ascending size then ascending name
+5. Trailing pointer: ascending size then ascending name
 
 ## Adding New Features
 
-### Where to Add Code
-
-- **New VS Code provider** (hover, code lens, diagnostics, code action):
-  1. Create provider class in `src/`
-  2. Register in `extension.ts` (see existing providers for patterns)
-  3. Add configuration in `package.json` under `contributes.configuration`
-
-- **New Go type support**: Add to `analyzer.ts` in the type size/alignment mappings
-- **New setting**: Add to `package.json` → `contributes.configuration.properties`, then use in your code via `vscode.workspace.getConfiguration()`
-
-### Extension Provider Patterns
-
-All providers receive `GoStructParser` and `StructAnalyzer` instances:
-
-```typescript
-class MyProvider {
-    constructor(
-        private parser: GoStructParser,
-        private analyzer: StructAnalyzer
-    ) {}
-}
-```
-
-Providers implement VS Code interfaces:
-- `HoverProvider`: `provideHover(document, position)`
-- `CodeLensProvider`: `provideCodeLenses(document)`
-- `DiagnosticProvider`: `provideDiagnostics(document)`
-- `CodeActionProvider`: `provideCodeActions(document, range)`
-
----
+- **New LSP method**: add handler in `lsp/internal/lsp/handler.go`, register in `server.go`'s `handleRequest` switch
+- **New analysis capability**: extend `lsp/internal/analysis/` — types, layout, analyzer
+- **New VS Code feature**: if LSP-providable, add to language server; otherwise add to `src/extension.ts`
+- **New setting**: add to `package.json` → `contributes.configuration.properties`
 
 ## Pull Request Process
 
-1. **Fork** the repository
-2. **Create a feature branch**: `git checkout -b feat/my-feature`
-3. **Make your changes** following the code style
-4. **Test manually** in Extension Development Host
-5. **Validate** against Go test files
-6. **Submit a PR** with:
-   - Clear description of what and why
-   - Testing performed
-   - Screenshots if UI changed
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Make changes following code style
+4. Run `make preflight` (vet → fmt → lint → test)
+5. Validate against test Go files
+6. Submit a PR with clear description of what, why, and testing performed
 
 ### PR Checklist
 
 - [ ] Code follows style guidelines
+- [ ] `make preflight` passes
 - [ ] Manual testing done in Extension Development Host
-- [ ] Validated against test_go_file.go and test_go_edge-cases.go
-- [ ] No console.log statements left in production code (optional for debugging)
-- [ ] package.json version unchanged (maintainer handles versions)
+- [ ] Validated against `test_go_file.go` and `test_go_edge-cases.go`
+- [ ] No debug output left in production code
+- [ ] `package.json` version unchanged (maintainer handles versions)
 
----
+## Version and Release
 
-## Version and Release Process
+Maintainer handles releases. Suggest semver increment in PR:
 
-The maintainer handles releases. If you're contributing a change that warrants a version bump, suggest the appropriate semver increment in your PR:
-
-- **Patch** (1.2.0 → 1.2.1): Bug fixes
-- **Minor** (1.2.0 → 1.3.0): New features, backward-compatible
-- **Major** (1.2.0 → 2.0.0): Breaking changes
+- **Patch** (2.0.0 → 2.0.1): Bug fixes
+- **Minor** (2.0.0 → 2.1.0): New features, backward-compatible
+- **Major** (2.0.0 → 3.0.0): Breaking changes
 
 ### Release Checklist (Maintainer)
 
 1. Bump version in `package.json`
 2. Add entry to `changelog.md` with date
-3. Run `npm run compile && vsce package`
-4. Create GitHub release with `.vsix` artifact
-5. Publish to VS Code Marketplace (vsce publish)
+3. Run `make build && npx vsce package`
+4. Push tag: `git tag v2.0.0 && git push origin v2.0.0`
+5. GitHub Actions creates release with Go binaries + VSIX
+6. Trigger `publish.yaml` workflow to publish to VS Code Marketplace + Open VSX
 
----
+## Building for Local Installation
+
+```bash
+make build
+npx vsce package
+```
+
+Generates a `.vsix` file installable via VS Code's "Install from VSIX" option.
 
 ## Questions?
 
-Open an issue at https://github.com/padiazg/go-struct-analyzer/issues for:
-
-- Bug reports
-- Feature requests
-- Clarification on this guide
-- Help with development setup
+Open an issue at https://github.com/padiazg/go-struct-analyzer/issues
