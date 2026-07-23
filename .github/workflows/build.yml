@@ -15,7 +15,7 @@ jobs:
       with:
         go-version: stable
     - name: Build Go LSP server
-      run: go build -o gsa-lsp
+      run: go build -o gsa-lsp ./cmd/gsa-lsp
     - name: Verify binary
       run: chmod +x gsa-lsp && ./gsa-lsp version
     - name: Upload Go binary
