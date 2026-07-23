@@ -4,13 +4,13 @@ version: 2
 
 before:
   hooks:
-    - go mod tidy
-    - go mod download
+    - sh -c "cd lsp && go mod tidy && go mod download"
 
 builds:
-  - main: cmd/gsa-lsp/main.go
+  - id: gsa-lsp
+    dir: lsp
+    main: cmd/gsa-lsp/main.go
     binary: gsa-lsp
-    # dir: lsp
     env:
       - CGO_ENABLED=0
     goos:
