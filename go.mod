@@ -1,4 +1,4 @@
-module github.com/padiazg/go-struct-analyzer
+module github.com/padiazg/go-struct-analyzer/v2
 
 go 1.26.2
 

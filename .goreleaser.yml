@@ -21,9 +21,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.Version={{.Version}}
-      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.Commit={{.Commit}}
-      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.BuildDate={{.Date}}
+      - -X github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version.Version={{.Version}}
+      - -X github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version.Commit={{.Commit}}
+      - -X github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version.BuildDate={{.Date}}
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
@@ -74,7 +74,7 @@ release:
 
     use Go
     ```shell
-    go install github.com/padiazg/go-struct-analyzer/lsp@{{ .Tag }}
+    go install github.com/padiazg/go-struct-analyzer/v2/lsp@{{ .Tag }}
     ```
 
   footer: |
