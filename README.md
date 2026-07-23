@@ -81,7 +81,7 @@ make install                                # copies to $GOPATH/bin
 Install via `go install`:
 
 ```bash
-go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest
+go install github.com/padiazg/go-struct-analyzer/v2/lsp@latest
 ```
 
 ### LSP Server for Other Editors

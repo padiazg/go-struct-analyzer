@@ -32,7 +32,7 @@ code --install-extension PatricioDiaz.go-struct-analyzer
 
 **Neovim:** See [Neovim setup guide](usage/neovim-installation.md) — built-in LSP client.
 
-**Any LSP editor:** Point your LSP client to the `gsa-lsp` binary (`go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest`). gsa-lsp speaks standard inlayHint, hover, diagnostics, and codeAction.
+**Any LSP editor:** Point your LSP client to the `gsa-lsp` binary (`go install github.com/padiazg/go-struct-analyzer/v2/lsp@latest`). gsa-lsp speaks standard inlayHint, hover, diagnostics, and codeAction.
 
 ## Quick Start
 

@@ -66,7 +66,7 @@ that is actually being loaded.
 ### 1. Install gsa-lsp binary
 
 ```bash
-go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest
+go install github.com/padiazg/go-struct-analyzer/v2/lsp@latest
 ```
 
 Or download a pre-built binary from [GitHub Releases](https://github.com/padiazg/go-struct-analyzer/releases).
