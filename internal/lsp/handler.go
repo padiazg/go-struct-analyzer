@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/padiazg/go-struct-analyzer/v2/lsp/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/v2/internal/analysis"
 )
 
 func uriToPath(uri string) string {

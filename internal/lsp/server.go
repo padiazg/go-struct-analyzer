@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/padiazg/go-struct-analyzer/v2/lsp/internal/analysis"
-	"github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version"
+	"github.com/padiazg/go-struct-analyzer/v2/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/v2/internal/version"
 )
 
 type StructDataParams struct {

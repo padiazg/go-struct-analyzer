@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/padiazg/go-struct-analyzer/v2/lsp/internal/analysis"
-	"github.com/padiazg/go-struct-analyzer/v2/lsp/internal/lsp"
-	"github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version"
+	"github.com/padiazg/go-struct-analyzer/v2/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/v2/internal/lsp"
+	"github.com/padiazg/go-struct-analyzer/v2/internal/version"
 )
 
 func main() {
