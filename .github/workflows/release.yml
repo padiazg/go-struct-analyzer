@@ -28,7 +28,7 @@ jobs:
       with:
         distribution: goreleaser
         version: '~> v2'
-        args: release --clean --workdir lsp/
+        args: release --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Upload goreleaser dist
