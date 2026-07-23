@@ -43,10 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ language: 'go', scheme: 'file' }],
 		synchronize: { configurationSection: 'goStructAnalyzer' },
-		initializationOptions: {
-			architecture: config.get('architecture', 'amd64'),
-			gcPressureSeverityWarning: config.get('gcPressureSeverityWarning', false),
-		},
+		initializationOptions: buildServerSettings(config),
 		outputChannel,
 		traceOutputChannel: outputChannel,
 	};
@@ -75,9 +72,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	outputChannel.info('LSP server started');
 
-	if (config.get('showInlineAnnotations', true)) {
-		setupInlineAnnotations(context);
-	}
+	setupInlineAnnotations(context);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('goStructAnalyzer.analyzeStruct', () => handleAnalyzeCommand()),
@@ -87,11 +82,28 @@ export async function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.onDidChangeConfiguration(e => {
 			if (e.affectsConfiguration('goStructAnalyzer')) {
 				if (client) {
-					client.sendNotification('workspace/didChangeConfiguration', { settings: {} });
+					const current = vscode.workspace.getConfiguration('goStructAnalyzer');
+					client.sendNotification('workspace/didChangeConfiguration', {
+						settings: { goStructAnalyzer: buildServerSettings(current) },
+					});
 				}
 			}
 		}),
 	);
+}
+
+// buildServerSettings maps the goStructAnalyzer.* VS Code settings that
+// gsa-lsp actually understands into the flat shape it expects, both at
+// startup (initializationOptions) and on live changes
+// (workspace/didChangeConfiguration).
+function buildServerSettings(config: vscode.WorkspaceConfiguration) {
+	return {
+		architecture: config.get('architecture', 'amd64'),
+		gcPressureSeverityWarning: config.get('gcPressureSeverityWarning', false),
+		enableStructOptimizationWarnings: config.get('enableStructOptimizationWarnings', true),
+		enableReorderCodeAction: config.get('enableReorderCodeAction', true),
+		enableGCPressureWarnings: config.get('enableGCPressureWarnings', true),
+	};
 }
 
 function setStatus(state: 'starting' | 'running' | 'error' | 'notfound', detail?: string) {
@@ -172,6 +184,12 @@ function setupInlineAnnotations(context: vscode.ExtensionContext) {
 	const update = async () => {
 		const editor = vscode.window.activeTextEditor;
 		if (!editor || editor.document.languageId !== 'go' || !client || !client.isRunning()) {
+			return;
+		}
+
+		if (!vscode.workspace.getConfiguration('goStructAnalyzer').get('showInlineAnnotations', false)) {
+			editor.setDecorations(sizeDecoration, []);
+			editor.setDecorations(paddingDecoration, []);
 			return;
 		}
 

@@ -11,16 +11,16 @@ type FieldInfo struct {
 }
 
 type StructInfo struct {
-	Name                string      `json:"name"`
 	File                string      `json:"file"`
-	Line                int         `json:"line"`
-	TotalSize           int64       `json:"totalSize"`
-	Alignment           int64       `json:"alignment"`
-	PointerBytes        int64       `json:"pointerBytes"`
-	OptimalPointerBytes int64       `json:"optimalPointerBytes"`
-	OptimalSize         int64       `json:"optimalSize"`
+	Name                string      `json:"name"`
 	Fields              []FieldInfo `json:"fields"`
 	OptimalFields       []FieldInfo `json:"optimalFields,omitempty"`
+	Alignment           int64       `json:"alignment"`
+	Line                int         `json:"line"`
+	OptimalPointerBytes int64       `json:"optimalPointerBytes"`
+	OptimalSize         int64       `json:"optimalSize"`
+	PointerBytes        int64       `json:"pointerBytes"`
+	TotalSize           int64       `json:"totalSize"`
 }
 
 type AnalysisResult struct {

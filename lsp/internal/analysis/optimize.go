@@ -62,11 +62,6 @@ func optimalFieldOrder(fields []fieldLayout, sizes types.Sizes) []fieldLayout {
 	return sorted
 }
 
-// type reorderableField struct {
-// 	layout fieldLayout
-// 	idx    int
-// }
-
 func b2i(b bool) int {
 	if b {
 		return 1

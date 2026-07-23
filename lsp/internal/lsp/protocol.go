@@ -12,15 +12,15 @@ type Request struct {
 }
 
 type Response struct {
+	Error   *ResponseError  `json:"error,omitempty"`
 	Jsonrpc string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
-	Error   *ResponseError  `json:"error,omitempty"`
 }
 
 type ResponseError struct {
-	Code    int    `json:"code"`
 	Message string `json:"message"`
+	Code    int    `json:"code"`
 }
 
 type Notification struct {
@@ -49,10 +49,17 @@ type Location struct {
 // Initialize
 
 type InitializeParams struct {
-	ProcessID             int                `json:"processId,omitempty"`
-	RootURI               string             `json:"rootUri,omitempty"`
 	Capabilities          ClientCapabilities `json:"capabilities"`
+	RootURI               string             `json:"rootUri,omitempty"`
 	InitializationOptions json.RawMessage    `json:"initializationOptions,omitempty"`
+	ProcessID             int                `json:"processId,omitempty"`
+}
+
+// DidChangeConfigurationParams carries the "settings" payload of a
+// workspace/didChangeConfiguration notification. gsa-lsp expects the same
+// flat shape it accepts via initializationOptions.
+type DidChangeConfigurationParams struct {
+	Settings json.RawMessage `json:"settings"`
 }
 
 type ClientCapabilities struct {
@@ -67,8 +74,8 @@ type TextDocumentClientCapabilities struct {
 }
 
 type HoverCapabilities struct {
-	DynamicRegistration bool     `json:"dynamicRegistration,omitempty"`
 	ContentFormat       []string `json:"contentFormat,omitempty"`
+	DynamicRegistration bool     `json:"dynamicRegistration,omitempty"`
 }
 
 type CodeLensCapabilities struct {
@@ -92,11 +99,11 @@ type InlayHintOptions struct {
 }
 
 type ServerCapabilities struct {
-	TextDocumentSync   int               `json:"textDocumentSync"`
-	HoverProvider      bool              `json:"hoverProvider"`
-	InlayHintProvider  *InlayHintOptions `json:"inlayHintProvider,omitempty"`
 	CodeLensProvider   *CodeLensOptions  `json:"codeLensProvider,omitempty"`
+	InlayHintProvider  *InlayHintOptions `json:"inlayHintProvider,omitempty"`
+	TextDocumentSync   int               `json:"textDocumentSync"`
 	CodeActionProvider bool              `json:"codeActionProvider"`
+	HoverProvider      bool              `json:"hoverProvider"`
 }
 
 type CodeLensOptions struct {
@@ -110,10 +117,10 @@ type DidOpenTextDocumentParams struct {
 }
 
 type TextDocumentItem struct {
-	URI        string `json:"uri"`
 	LanguageID string `json:"languageId"`
-	Version    int    `json:"version"`
 	Text       string `json:"text"`
+	URI        string `json:"uri"`
+	Version    int    `json:"version"`
 }
 
 type DidChangeTextDocumentParams struct {
@@ -150,8 +157,8 @@ type HoverParams struct {
 }
 
 type Hover struct {
-	Contents MarkupContent `json:"contents"`
 	Range    *Range        `json:"range,omitempty"`
+	Contents MarkupContent `json:"contents"`
 }
 
 type MarkupContent struct {
@@ -166,8 +173,8 @@ type CodeLensParams struct {
 }
 
 type CodeLens struct {
-	Range   Range    `json:"range"`
 	Command *Command `json:"command,omitempty"`
+	Range   Range    `json:"range"`
 }
 
 type Command struct {
@@ -179,11 +186,11 @@ type Command struct {
 // Diagnostics
 
 type Diagnostic struct {
+	Code     string `json:"code,omitempty"`
+	Message  string `json:"message"`
+	Source   string `json:"source,omitempty"`
 	Range    Range  `json:"range"`
 	Severity int    `json:"severity,omitempty"`
-	Source   string `json:"source,omitempty"`
-	Message  string `json:"message"`
-	Code     string `json:"code,omitempty"`
 }
 
 type PublishDiagnosticsParams struct {
@@ -195,8 +202,8 @@ type PublishDiagnosticsParams struct {
 
 type CodeActionParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
-	Range        Range                  `json:"range"`
 	Context      CodeActionContext      `json:"context"`
+	Range        Range                  `json:"range"`
 }
 
 type CodeActionContext struct {
@@ -204,9 +211,9 @@ type CodeActionContext struct {
 }
 
 type CodeAction struct {
-	Title       string         `json:"title"`
-	Kind        string         `json:"kind,omitempty"`
 	Edit        *WorkspaceEdit `json:"edit,omitempty"`
+	Kind        string         `json:"kind,omitempty"`
+	Title       string         `json:"title"`
 	IsPreferred bool           `json:"isPreferred,omitempty"`
 }
 
@@ -215,41 +222,39 @@ type WorkspaceEdit struct {
 }
 
 type TextEdit struct {
-	Range   Range  `json:"range"`
 	NewText string `json:"newText"`
+	Range   Range  `json:"range"`
 }
 
 // Constants
 // InlayHint
 
 type InlayHintParams struct {
-	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Range        *Range                 `json:"range,omitempty"`
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
 
 type InlayHint struct {
-	Position     Position             `json:"position"`
-	Label        string               `json:"label"`
-	Kind         *int                 `json:"kind,omitempty"`
-	Tooltip      string               `json:"tooltip,omitempty"`
-	PaddingLeft  bool                 `json:"paddingLeft,omitempty"`
-	PaddingRight bool                 `json:"paddingRight,omitempty"`
-	Data         json.RawMessage      `json:"data,omitempty"`
+	Kind         *int            `json:"kind,omitempty"`
+	Label        string          `json:"label"`
+	Tooltip      string          `json:"tooltip,omitempty"`
+	Data         json.RawMessage `json:"data,omitempty"`
+	Position     Position        `json:"position"`
+	PaddingLeft  bool            `json:"paddingLeft,omitempty"`
+	PaddingRight bool            `json:"paddingRight,omitempty"`
 }
 
 type InlayHintLabelPart struct {
-	Value    string       `json:"value"`
-	Tooltip  string       `json:"tooltip,omitempty"`
-	Location *Location    `json:"location,omitempty"`
-	Command  *Command     `json:"command,omitempty"`
+	Command  *Command  `json:"command,omitempty"`
+	Location *Location `json:"location,omitempty"`
+	Tooltip  string    `json:"tooltip,omitempty"`
+	Value    string    `json:"value"`
 }
 
 var (
-	InlayHintKindType      = ptr(1)
-	InlayHintKindParameter = ptr(2)
+	InlayHintKindType      = new(1)
+	InlayHintKindParameter = new(2)
 )
-
-func ptr[T any](v T) *T { return &v }
 
 // Constants
 const (

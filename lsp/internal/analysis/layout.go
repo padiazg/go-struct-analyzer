@@ -5,13 +5,13 @@ import (
 )
 
 type fieldLayout struct {
+	TypeObj   types.Type
 	Name      string
 	TypeStr   string
-	TypeObj   types.Type
-	Size      int64
 	Alignment int64
 	Offset    int64
 	Padding   int64
+	Size      int64
 }
 
 func computeLayout(structObj *types.Struct, sizes types.Sizes) []fieldLayout {

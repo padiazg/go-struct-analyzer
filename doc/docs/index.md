@@ -55,7 +55,7 @@ type Event struct {         // ⚠️ 40 bytes (can be 24 bytes)
 
 | Setting | Default | Description |
 | - | - | - |
-| `goStructAnalyzer.showInlineAnnotations` | `true` | Show size annotations inline with struct fields |
+| `goStructAnalyzer.showInlineAnnotations` | `false` | Show size annotations inline with struct fields |
 | `goStructAnalyzer.showPadding` | `true` | Highlight padding bytes in struct layout |
 | `goStructAnalyzer.architecture` | `amd64` | Target architecture: `amd64`, `386`, `arm64`, `arm` |
 | `goStructAnalyzer.enableStructOptimizationWarnings` | `true` | Show warnings for sub-optimal memory layout |
