@@ -12,7 +12,7 @@ editors/zed/target/
 editors/zed/extension.wasm
 
 # IDE files
-.vscode/settings.json
+.vscode
 # .vscode/launch.json
 
 # OS files
