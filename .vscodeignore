@@ -12,6 +12,7 @@ lsp/**
 *.go
 gsa-lsp
 .goreleaser.yml
+dist
 
 ## Editors
 editors/
