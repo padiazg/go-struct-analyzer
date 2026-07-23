@@ -9,7 +9,7 @@ before:
 builds:
   - id: gsa-lsp
     dir: lsp
-    main: cmd/gsa-lsp/main.go
+    main: main.go
     binary: gsa-lsp
     env:
       - CGO_ENABLED=0
@@ -74,7 +74,7 @@ release:
 
     use Go
     ```shell
-    go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@{{ .Tag }}
+    go install github.com/padiazg/go-struct-analyzer/lsp@{{ .Tag }}
     ```
 
   footer: |
