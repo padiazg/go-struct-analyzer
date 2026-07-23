@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/analysis"
-	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/version"
+	"github.com/padiazg/go-struct-analyzer/lsp/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/lsp/internal/version"
 )
 
 type StructDataParams struct {
@@ -21,20 +21,23 @@ type StructDataParams struct {
 }
 
 type Server struct {
-	mu          sync.Mutex
-	documents   map[string]*Document
-	results     map[string]*AnalysisResult
-	arch        string
-	gcWarn      bool
-	initialized bool
-	writer      io.Writer
-	raw         map[string]*analysis.AnalysisResult
+	writer               io.Writer
+	documents            map[string]*Document
+	raw                  map[string]*analysis.AnalysisResult
+	results              map[string]*AnalysisResult
+	arch                 string
+	mu                   sync.Mutex
+	enableGCWarnings     bool
+	enableReorderAction  bool
+	enableStructWarnings bool
+	gcWarn               bool
+	initialized          bool
 }
 
 type Document struct {
+	Text    string
 	URI     string
 	Version int
-	Text    string
 }
 
 type AnalysisResult struct {
@@ -46,11 +49,14 @@ type AnalysisResult struct {
 
 func NewServer() *Server {
 	return &Server{
-		documents: make(map[string]*Document),
-		results:   make(map[string]*AnalysisResult),
-		raw:       make(map[string]*analysis.AnalysisResult),
-		arch:      "amd64",
-		writer:    os.Stdout,
+		documents:            make(map[string]*Document),
+		results:              make(map[string]*AnalysisResult),
+		raw:                  make(map[string]*analysis.AnalysisResult),
+		arch:                 "amd64",
+		enableStructWarnings: true,
+		enableReorderAction:  true,
+		enableGCWarnings:     true,
+		writer:               os.Stdout,
 	}
 }
 
@@ -176,6 +182,8 @@ func (s *Server) handleNotification(method string, params []byte) {
 		s.handleDidSave(params)
 	case "textDocument/didClose":
 		s.handleDidClose(params)
+	case "workspace/didChangeConfiguration":
+		s.handleDidChangeConfiguration(params)
 	}
 }
 

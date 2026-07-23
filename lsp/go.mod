@@ -1,4 +1,4 @@
-module github.com/padiazg/go-struct-analyzer/gsa-lsp
+module github.com/padiazg/go-struct-analyzer/lsp
 
 go 1.26.2
 

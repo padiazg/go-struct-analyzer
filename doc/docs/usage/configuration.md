@@ -6,7 +6,7 @@ Open VS Code settings and search for "Go Struct Analyzer", or edit `settings.jso
 
 | Setting | Type | Default | Description |
 | - | - | - | - |
-| `goStructAnalyzer.showInlineAnnotations` | `boolean` | `true` | Show size annotations inline with struct fields |
+| `goStructAnalyzer.showInlineAnnotations` | `boolean` | `false` | Show size annotations inline with struct fields |
 | `goStructAnalyzer.showPadding` | `boolean` | `true` | Highlight padding bytes in struct layout visualization |
 | `goStructAnalyzer.architecture` | `string` | `"amd64"` | Target architecture for calculations. One of: `amd64`, `386`, `arm64`, `arm` |
 | `goStructAnalyzer.enableStructOptimizationWarnings` | `boolean` | `true` | Show warnings for structs that can be optimized for better memory layout |

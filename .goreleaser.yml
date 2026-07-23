@@ -21,9 +21,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.version={{.Version}}
-      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.commit={{.Commit}}
-      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.buildDate={{.Date}}
+      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.Version={{.Version}}
+      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.Commit={{.Commit}}
+      - -X github.com/padiazg/go-struct-analyzer/lsp/internal/version.BuildDate={{.Date}}
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"

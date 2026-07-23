@@ -53,7 +53,7 @@
       "properties": {
         "goStructAnalyzer.showInlineAnnotations": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Show size annotations inline with struct fields"
         },
         "goStructAnalyzer.showPadding": {

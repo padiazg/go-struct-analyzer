@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/padiazg/go-struct-analyzer/gsa-lsp/internal/analysis"
+	"github.com/padiazg/go-struct-analyzer/lsp/internal/analysis"
 )
 
 func uriToPath(uri string) string {
@@ -42,20 +42,7 @@ func (s *Server) handleInitialize(body []byte, result *any) error {
 		return fmt.Errorf("unmarshal initialize: %w", err)
 	}
 
-	if params.InitializationOptions != nil {
-		var opts struct {
-			Architecture              string `json:"architecture"`
-			GcPressureSeverityWarning bool   `json:"gcPressureSeverityWarning"`
-		}
-		if err := json.Unmarshal(params.InitializationOptions, &opts); err == nil {
-			s.mu.Lock()
-			if opts.Architecture != "" {
-				s.arch = opts.Architecture
-			}
-			s.gcWarn = opts.GcPressureSeverityWarning
-			s.mu.Unlock()
-		}
-	}
+	s.applySettings(params.InitializationOptions)
 
 	*result = InitializeResult{
 		Capabilities: ServerCapabilities{
@@ -67,6 +54,88 @@ func (s *Server) handleInitialize(body []byte, result *any) error {
 		},
 	}
 	return nil
+}
+
+// settingsPayload is the flat settings shape gsa-lsp understands, sent by
+// clients either once via initializationOptions (at initialize) or
+// repeatedly via workspace/didChangeConfiguration. Enable* fields are
+// pointers so omitted keys don't override the current value with the zero
+// value (false).
+type settingsPayload struct {
+	EnableGCPressureWarnings         *bool  `json:"enableGCPressureWarnings"`
+	EnableReorderCodeAction          *bool  `json:"enableReorderCodeAction"`
+	EnableStructOptimizationWarnings *bool  `json:"enableStructOptimizationWarnings"`
+	Architecture                     string `json:"architecture"`
+	GcPressureSeverityWarning        bool   `json:"gcPressureSeverityWarning"`
+}
+
+// applySettings parses a settingsPayload from raw (initializationOptions or
+// workspace/didChangeConfiguration "settings") and updates the server's
+// live configuration. Unset/omitted fields are left untouched.
+func (s *Server) applySettings(raw json.RawMessage) {
+	if raw == nil || string(raw) == "null" {
+		return
+	}
+
+	var opts settingsPayload
+	if err := json.Unmarshal(raw, &opts); err != nil {
+		return
+	}
+
+	s.mu.Lock()
+	if opts.Architecture != "" {
+		s.arch = opts.Architecture
+	}
+	s.gcWarn = opts.GcPressureSeverityWarning
+	if opts.EnableStructOptimizationWarnings != nil {
+		s.enableStructWarnings = *opts.EnableStructOptimizationWarnings
+	}
+	if opts.EnableReorderCodeAction != nil {
+		s.enableReorderAction = *opts.EnableReorderCodeAction
+	}
+	if opts.EnableGCPressureWarnings != nil {
+		s.enableGCWarnings = *opts.EnableGCPressureWarnings
+	}
+	s.mu.Unlock()
+}
+
+// handleDidChangeConfiguration applies updated settings pushed by the client
+// via workspace/didChangeConfiguration and re-analyzes every open document
+// so diagnostics/code actions reflect the new configuration immediately.
+func (s *Server) handleDidChangeConfiguration(body []byte) {
+	var params DidChangeConfigurationParams
+	if err := json.Unmarshal(body, &params); err != nil {
+		return
+	}
+
+	s.applySettings(unwrapSectionSettings(params.Settings))
+
+	s.mu.Lock()
+	uris := make([]string, 0, len(s.documents))
+	for uri := range s.documents {
+		uris = append(uris, uri)
+	}
+	s.mu.Unlock()
+
+	for _, uri := range uris {
+		s.analyzeFile(uri)
+	}
+}
+
+// unwrapSectionSettings accepts either the flat settingsPayload shape (used
+// by initializationOptions and by simple clients) or the LSP-conventional
+// shape where settings are nested under the "goStructAnalyzer" section name
+// (produced e.g. by Emacs eglot's eglot-workspace-configuration, and by
+// vscode-languageclient's configurationSection sync). If a "goStructAnalyzer"
+// key is present, its contents are unwrapped; otherwise raw is returned as-is.
+func unwrapSectionSettings(raw json.RawMessage) json.RawMessage {
+	var wrapper struct {
+		GoStructAnalyzer json.RawMessage `json:"goStructAnalyzer"`
+	}
+	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.GoStructAnalyzer) > 0 {
+		return wrapper.GoStructAnalyzer
+	}
+	return raw
 }
 
 // -- Text Document Sync ---------------------------------------------------
@@ -206,6 +275,8 @@ func (s *Server) buildDiagnostics(result *analysis.AnalysisResult, uri string) [
 
 	s.mu.Lock()
 	gcWarn := s.gcWarn
+	enableStructWarnings := s.enableStructWarnings
+	enableGCWarnings := s.enableGCWarnings
 	s.mu.Unlock()
 
 	for _, st := range result.Structs {
@@ -213,7 +284,7 @@ func (s *Server) buildDiagnostics(result *analysis.AnalysisResult, uri string) [
 			continue
 		}
 
-		if st.OptimalSize < st.TotalSize {
+		if enableStructWarnings && st.OptimalSize < st.TotalSize {
 			diags = append(diags, Diagnostic{
 				Range: Range{
 					Start: Position{Line: st.Line - 1, Character: 5},
@@ -226,7 +297,7 @@ func (s *Server) buildDiagnostics(result *analysis.AnalysisResult, uri string) [
 			})
 		}
 
-		if st.OptimalPointerBytes < st.PointerBytes {
+		if enableGCWarnings && st.OptimalPointerBytes < st.PointerBytes {
 			severity := SeverityHint
 			if gcWarn {
 				severity = SeverityWarning
@@ -255,13 +326,15 @@ func (s *Server) handleHover(body []byte, result *any) error {
 		return fmt.Errorf("unmarshal hover: %w", err)
 	}
 
-	analysisResult := s.getAnalysis(params.TextDocument.URI)
-	if analysisResult == nil {
+	s.mu.Lock()
+	raw, ok := s.raw[params.TextDocument.URI]
+	s.mu.Unlock()
+	if !ok || raw == nil {
 		return nil
 	}
 
 	line := params.Position.Line + 1
-	for _, st := range analysisResult.Structs {
+	for _, st := range raw.Structs {
 		if st.Line == line {
 			*result = s.buildStructHover(st)
 			return nil
@@ -332,7 +405,27 @@ func (s *Server) handleInlayHint(body []byte, result *any) error {
 
 	var hints []InlayHint
 	for _, st := range raw.Structs {
+		if st.Line == 0 {
+			continue
+		}
+		label := fmt.Sprintf("%dB", st.TotalSize)
+		tooltip := fmt.Sprintf("struct %s: %d bytes (align %d, GC %dB)", st.Name, st.TotalSize, st.Alignment, st.PointerBytes)
+		if st.OptimalSize < st.TotalSize {
+			label = fmt.Sprintf("%dB → %dB", st.TotalSize, st.OptimalSize)
+			tooltip += fmt.Sprintf("\noptimal: %d bytes (saves %d)", st.OptimalSize, st.TotalSize-st.OptimalSize)
+		}
+		hints = append(hints, InlayHint{
+			Position:    Position{Line: st.Line - 1, Character: 200},
+			Label:       label,
+			Kind:        InlayHintKindType,
+			PaddingLeft: true,
+			Tooltip:     tooltip,
+		})
+
 		for _, f := range st.Fields {
+			if f.Line == 0 {
+				continue
+			}
 			label := fmt.Sprintf("[%d] %dB", f.Offset, f.Size)
 			tooltip := fmt.Sprintf("type: %s\noffset: %d\nsize: %d\nalign: %d", f.Type, f.Offset, f.Size, f.Alignment)
 			if f.Padding > 0 {
@@ -361,17 +454,19 @@ func (s *Server) handleCodeLens(body []byte, result *any) error {
 		return fmt.Errorf("unmarshal codelens: %w", err)
 	}
 
-	analysisResult := s.getAnalysis(params.TextDocument.URI)
-	if analysisResult == nil {
+	s.mu.Lock()
+	raw, ok := s.raw[params.TextDocument.URI]
+	s.mu.Unlock()
+	if !ok || raw == nil {
 		*result = []CodeLens{}
 		return nil
 	}
 
-	*result = s.buildCodeLenses(analysisResult, params.TextDocument.URI)
+	*result = s.buildCodeLenses(raw, params.TextDocument.URI)
 	return nil
 }
 
-func (s *Server) buildCodeLenses(result *analysis.AnalysisResult, uri string) []CodeLens {
+func (s *Server) buildCodeLenses(result *analysis.AnalysisResult, _ string) []CodeLens {
 	lenses := make([]CodeLens, 0)
 
 	for _, st := range result.Structs {
@@ -407,8 +502,18 @@ func (s *Server) handleCodeAction(body []byte, result *any) error {
 		return nil
 	}
 
-	analysisResult := s.getAnalysis(params.TextDocument.URI)
-	if analysisResult == nil {
+	s.mu.Lock()
+	enableReorderAction := s.enableReorderAction
+	s.mu.Unlock()
+	if !enableReorderAction {
+		*result = []CodeAction{}
+		return nil
+	}
+
+	s.mu.Lock()
+	analysisResult, ok := s.raw[params.TextDocument.URI]
+	s.mu.Unlock()
+	if !ok || analysisResult == nil {
 		*result = []CodeAction{}
 		return nil
 	}
@@ -416,18 +521,23 @@ func (s *Server) handleCodeAction(body []byte, result *any) error {
 	var actions []CodeAction
 	path := uriToPath(params.TextDocument.URI)
 
-	for _, st := range analysisResult.Structs {
-		for _, diag := range params.Context.Diagnostics {
-			if diag.Code != "struct-layout-optimization" && diag.Code != "struct-gc-pointer-bytes" {
-				continue
-			}
+	// Iterate diagnostics first, structs second: this way each diagnostic
+	// (layout AND gc-pointer-bytes) produces its own quick fix, so a struct
+	// that triggers both diagnostics on the same line gets both actions
+	// instead of only the first one matched.
+	for _, diag := range params.Context.Diagnostics {
+		if diag.Code != "struct-layout-optimization" && diag.Code != "struct-gc-pointer-bytes" {
+			continue
+		}
+
+		for _, st := range analysisResult.Structs {
 			if st.Line-1 != diag.Range.Start.Line {
 				continue
 			}
 
 			edits, err := s.generateReorderEdits(path, st)
 			if err != nil {
-				continue
+				break
 			}
 
 			title := "Reorder struct fields to optimize memory layout"

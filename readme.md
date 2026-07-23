@@ -118,7 +118,7 @@ language-servers = ["gsa-lsp"]
 
 | Setting | Default | Description |
 | - | - | - |
-| `showInlineAnnotations` | `true` | Show size annotations inline |
+| `showInlineAnnotations` | `false` | Show size annotations inline |
 | `showPadding` | `true` | Highlight padding bytes |
 | `architecture` | `amd64` | Target architecture |
 | `enableStructOptimizationWarnings` | `true` | Warnings for sub-optimal layout |
