@@ -32,7 +32,7 @@ CLAUDE.md
 *.md
 !CODE_OF_CONDUCT.md
 !CONTRIBUTING.md
-!readme.md
+!README.md
 
 # Documentation site output
 doc/site/
