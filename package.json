@@ -102,7 +102,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile:go": "cd lsp && go build -o ../gsa-lsp ./cmd/gsa-lsp/",
+    "compile:go": "go build -o gsa-lsp .",
     "compile:ts": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
     "compile": "npm run compile:go && npm run compile:ts",
     "watch": "npm run esbuild -- --watch",

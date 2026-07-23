@@ -4,12 +4,11 @@ version: 2
 
 before:
   hooks:
-    - sh -c "cd lsp && go mod tidy && go mod download"
+    - go mod tidy && go mod download
 
 builds:
   - id: gsa-lsp
-    dir: lsp
-    main: main.go
+    main: .
     binary: gsa-lsp
     env:
       - CGO_ENABLED=0
@@ -21,9 +20,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version.Version={{.Version}}
-      - -X github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version.Commit={{.Commit}}
-      - -X github.com/padiazg/go-struct-analyzer/v2/lsp/internal/version.BuildDate={{.Date}}
+      - -X github.com/padiazg/go-struct-analyzer/v2/internal/version.Version={{.Version}}
+      - -X github.com/padiazg/go-struct-analyzer/v2/internal/version.Commit={{.Commit}}
+      - -X github.com/padiazg/go-struct-analyzer/v2/internal/version.BuildDate={{.Date}}
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
@@ -74,7 +73,7 @@ release:
 
     use Go
     ```shell
-    go install github.com/padiazg/go-struct-analyzer/v2/lsp@{{ .Tag }}
+    go install github.com/padiazg/go-struct-analyzer/v2@{{ .Tag }}
     ```
 
   footer: |
