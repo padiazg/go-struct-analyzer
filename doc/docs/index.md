@@ -71,6 +71,6 @@ type Event struct {         // ⚠️ 40 bytes (can be 24 bytes)
 - [Installation Guide](getting-started/installation.md) — all install methods
 - [Usage Documentation](usage/index.md) — detailed feature walkthroughs
 - [Concepts](concepts/index.md) — memory alignment, GC scan, ptrdata
-- [Development Guide](../CONTRIBUTING.md) — contributing and building
+- [Development Guide](CONTRIBUTING.md) — contributing and building
 - [Changelog](changelog.md) — version history
 - [License](license.md) — MIT

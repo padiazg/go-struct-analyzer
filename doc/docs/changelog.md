@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 > Versions v2.0.0, v2.0.1 and v2.0.2 were skipped due to tag immutability issues
 > with the Go module proxy during migration. See
-> [../../RELEASING.md](../../RELEASING.md) for the postmortem.
+> [RELEASING.md](RELEASING.md) for the postmortem.
 
 ### Added
 
