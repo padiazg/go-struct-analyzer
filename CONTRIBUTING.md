@@ -22,11 +22,10 @@ Press **F5** in VS Code to launch an Extension Development Host window with the 
 
 | Directory/File | Purpose |
 | - | - |
-| `lsp/` | Go module — the analysis engine and LSP server |
-| `lsp/cmd/gsa-lsp/main.go` | CLI entry (`analyze`, `lsp`, `version` subcommands) |
-| `lsp/internal/analysis/` | Types, layout (size/align/ptrdata), analyzer (`go/packages`), optimizer (`fieldalignment` sort) |
-| `lsp/internal/lsp/` | Protocol types, JSON-RPC server, all LSP method handlers |
-| `lsp/internal/version/` | Ldflags version variables |
+| `cmd/gsa-lsp/` | CLI entry point (`analyze`, `lsp`, `version` subcommands) |
+| `internal/analysis/` | Types, layout (size/align/ptrdata), analyzer (`go/packages`), optimizer (`fieldalignment` sort) |
+| `internal/lsp/` | Protocol types, JSON-RPC server, all LSP method handlers |
+| `internal/version/` | Ldflags version variables |
 | `src/extension.ts` | VS Code extension entry — LSP client + inline annotations |
 | `Makefile` | Build, test, lint, preflight targets |
 | `test_go_file.go` | Validation structs (BadLayout, GoodLayout, ComplexStruct, ArrayExample) |
@@ -75,14 +74,13 @@ echo '...' | ./gsa-lsp lsp                 # LSP mode (stdin/stdout)
 
 Changes to `src/extension.ts` require a rebuild (`make build-ts`) and reload of the Extension Development Host.
 
-Changes to `lsp/` Go code require `make build-go` (or `make build`) and reload.
+Changes to `internal/` Go code require `make build-go` (or `make build`) and reload.
 
 ## Go Module
 
-The Go code lives entirely in `lsp/` with its own `go.mod`:
+The Go code lives under `cmd/gsa-lsp/` and `internal/`:
 
 ```bash
-cd lsp
 go test -race -count=1 ./...
 go vet ./...
 golangci-lint run ./...
@@ -163,8 +161,8 @@ Matches `fieldalignment` exactly:
 
 ## Adding New Features
 
-- **New LSP method**: add handler in `lsp/internal/lsp/handler.go`, register in `server.go`'s `handleRequest` switch
-- **New analysis capability**: extend `lsp/internal/analysis/` — types, layout, analyzer
+- **New LSP method**: add handler in `internal/lsp/handler.go`, register in `server.go`'s `handleRequest` switch
+- **New analysis capability**: extend `internal/analysis/` — types, layout, analyzer
 - **New VS Code feature**: if LSP-providable, add to language server; otherwise add to `src/extension.ts`
 - **New setting**: add to `package.json` → `contributes.configuration.properties`
 
@@ -197,20 +195,15 @@ The extension registers `gsa-lsp` as an additional language server for Go, runni
 
 ## Version and Release
 
-Maintainer handles releases. Suggest semver increment in PR:
+See [RELEASING.md](RELEASING.md) for the full release process, versioning
+rules, proxy immutability gotchas, and the binary naming pitfalls that
+motivated them.
 
-- **Patch** (2.0.0 → 2.0.1): Bug fixes
-- **Minor** (2.0.0 → 2.1.0): New features, backward-compatible
-- **Major** (2.0.0 → 3.0.0): Breaking changes
+Semver increment guide for PR authors:
 
-### Release Checklist (Maintainer)
-
-1. Bump version in `package.json`
-2. Add entry to `changelog.md` with date
-3. Run `make build && npx vsce package`
-4. Push tag: `git tag v2.0.0 && git push origin v2.0.0`
-5. GitHub Actions creates release with Go binaries + VSIX
-6. Trigger `publish.yaml` workflow to publish to VS Code Marketplace + Open VSX
+- **Patch** (2.0.2 → 2.0.3): Bug fixes, doc updates
+- **Minor** (2.0.2 → 2.1.0): New features, backward-compatible
+- **Major** (2.0.2 → 3.0.0): Breaking changes
 
 ## Building for Local Installation
 

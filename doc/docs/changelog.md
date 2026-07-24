@@ -24,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Removed
 
-- **TypeScript analyzer**: `parser.ts`, `analyzer.ts`, `hover.ts`, `codelens.ts`, `diagnostics.ts`, `codeaction.ts` removed. Replaced by `lsp/` Go module.
+- **TypeScript analyzer**: `parser.ts`, `analyzer.ts`, `hover.ts`, `codelens.ts`, `diagnostics.ts`, `codeaction.ts` removed. Replaced by `internal/` Go module.
 - **v1.x release history**: The old TS-based engine is discarded. All earlier changelog entries removed to reflect the clean break.
 
 ## Previous Versions
