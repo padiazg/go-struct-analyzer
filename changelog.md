@@ -2,9 +2,9 @@
 
 All notable changes to the "go-struct-analyzer" extension will be documented in this file.
 
-## [2.0.2] - 2026-07-24
+## [2.0.3] - 2026-07-24
 
-> Versions v2.0.0 and v2.0.1 were skipped due to tag immutability issues
+> Versions v2.0.0, v2.0.1 and v2.0.2 were skipped due to tag immutability issues
 > with the Go module proxy during migration. See [RELEASING.md](RELEASING.md)
 > for the postmortem.
 

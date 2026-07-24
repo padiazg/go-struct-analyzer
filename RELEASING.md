@@ -1,6 +1,6 @@
 # Release Guidelines
 
-Lessons learned from the v2.0.0 → v2.0.2 migration: a module-path/binary-layout
+Lessons learned from the v2.0.0 → v2.0.3 migration: a module-path/binary-layout
 mismatch combined with Go's immutable proxy caching turned a simple `go install`
 fix into three burned tags. This document exists so it doesn't happen again.
 

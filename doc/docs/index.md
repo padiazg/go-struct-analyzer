@@ -1,4 +1,4 @@
-# Go Struct Analyzer — v2.0.0
+# Go Struct Analyzer — v2
 
 **Go Struct Analyzer** shows memory size and padding information for Go structs, powered by a **Go LSP backend** (`gsa-lsp`) for exact `fieldalignment` parity.
 
