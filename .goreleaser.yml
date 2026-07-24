@@ -63,20 +63,33 @@ release:
   prerelease: auto
   mode: replace
   header: |
-    ## gsa-lsp {{ .Tag }} Release
+    ## go-struct-analyzer {{ .Tag }}
 
-    gsa-lsp is a Go struct analyzer LSP server with exact fieldalignment parity.
+    Go struct field alignment analyzer with exact `fieldalignment` parity.
+    Ships as CLI (`gsa-lsp analyze`) and LSP server (`gsa-lsp lsp`) for
+    editor integration.
 
-    ### Installation
+    Full documentation: https://padiazg.github.io/go-struct-analyzer
 
-    Download the appropriate binary for your platform below, or:
+    ### Quick Start
 
-    use Go
-    ```shell
-    go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@{{ .Tag }}
-    ```
+    1. Install & verify the LSP server:
+       ```shell
+       go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@{{ .Tag }}
+       gsa-lsp analyze struct.go            # CLI analysis
+       gsa-lsp lsp                          # LSP mode (stdin/stdout)
+       ```
+
+    2. VS Code: install "Go Struct Analyzer" from the
+       [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=padiazg.go-struct-analyzer)
+       or [Open VSX](https://open-vsx.org/extension/padiazg/go-struct-analyzer).
+
+    3. Other LSP editors (Neovim, Helix, etc.): configure `gsa-lsp lsp`
+       as a language server — see docs for setup guides.
 
   footer: |
     **Full Changelog**: https://github.com/padiazg/go-struct-analyzer/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    **Docs**: https://padiazg.github.io/go-struct-analyzer
 
     ---
