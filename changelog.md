@@ -2,7 +2,11 @@
 
 All notable changes to the "go-struct-analyzer" extension will be documented in this file.
 
-## [2.0.0] - 2026-07-21
+## [2.0.2] - 2026-07-24
+
+> Versions v2.0.0 and v2.0.1 were skipped due to tag immutability issues
+> with the Go module proxy during migration. See [RELEASING.md](RELEASING.md)
+> for the postmortem.
 
 ### Added
 
@@ -25,9 +29,10 @@ All notable changes to the "go-struct-analyzer" extension will be documented in 
 ### Removed
 
 - **TypeScript analyzer**: `parser.ts`, `analyzer.ts`, `hover.ts`, `codelens.ts`, `diagnostics.ts`, `codeaction.ts` removed. Replaced by `internal/` Go module.
-- **v1.x release history**: The old TS-based engine is discarded. All earlier changelog entries removed to reflect the clean break.
 
 ## Previous Versions
+
+**v1.x release history**: The old TS-based engine is discarded.
 
 ### [1.2.0] - 2026-04-20
 
