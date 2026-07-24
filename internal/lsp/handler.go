@@ -250,23 +250,23 @@ func (s *Server) handleStructData(params []byte, result *any) error {
 	return nil
 }
 
-func (s *Server) getAnalysis(uri string) *analysis.AnalysisResult {
-	path := uriToPath(uri)
-	s.mu.Lock()
-	arch := s.arch
-	doc := s.documents[uri]
-	s.mu.Unlock()
+// func (s *Server) getAnalysis(uri string) *analysis.AnalysisResult {
+// 	path := uriToPath(uri)
+// 	s.mu.Lock()
+// 	arch := s.arch
+// 	doc := s.documents[uri]
+// 	s.mu.Unlock()
 
-	var src string
-	if doc != nil {
-		src = doc.Text
-	}
-	result, err := analysis.AnalyzeFile(path, arch, src)
-	if err != nil {
-		return nil
-	}
-	return result
-}
+// 	var src string
+// 	if doc != nil {
+// 		src = doc.Text
+// 	}
+// 	result, err := analysis.AnalyzeFile(path, arch, src)
+// 	if err != nil {
+// 		return nil
+// 	}
+// 	return result
+// }
 
 // -- Diagnostics ----------------------------------------------------------
 

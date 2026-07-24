@@ -27,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	if (!binaryPath) {
 		setStatus('notfound');
 		outputChannel.error('gsa-lsp binary not found');
-		outputChannel.info('Install: go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest');
+		outputChannel.info('Install: go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest');
 		outputChannel.show();
 		return;
 	}
@@ -122,7 +122,7 @@ function setStatus(state: 'starting' | 'running' | 'error' | 'notfound', detail?
 			break;
 		case 'notfound':
 			statusItem.text = '$(circle-slash) GSA-LSP';
-			statusItem.tooltip = 'Binary not found. Install: go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest';
+			statusItem.tooltip = 'Binary not found. Install: go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest';
 			break;
 	}
 	statusItem.show();

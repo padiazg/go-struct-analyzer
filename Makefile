@@ -1,4 +1,4 @@
-MODULE   := $(shell head -1 lsp/go.mod | awk '{print $$2}')
+MODULE   := $(shell head -1 go.mod | awk '{print $$2}')
 BINARY   := gsa-lsp
 VERSION_PKG := $(MODULE)/internal/version
 
@@ -14,36 +14,36 @@ build: build-go build-ts
 
 build-go:
 	@echo "Building $(BINARY)..."
-	@cd lsp && go build -o ../$(BINARY) -ldflags "$(LDFLAGS)" ./cmd/gsa-lsp/
+	@go build -o ../$(BINARY) -ldflags "$(LDFLAGS)" ./cmd/gsa-lsp/
 
 build-ts:
 	@echo "Compiling TypeScript..."
 	@npm run compile
 
 test:
-	cd lsp && go test -race -count=1 ./...
+	go test -race -count=1 ./...
 
 lint:
-	cd lsp && golangci-lint run ./...
+	golangci-lint run ./...
 
 vet:
-	cd lsp && go vet ./...
+	go vet ./...
 
 fmt:
-	cd lsp && gofmt -s -w .
+	gofmt -s -w .
 
 clean:
 	rm -f $(BINARY) coverage.out
 	rm -rf out/
 
 mod-tidy:
-	cd lsp && go mod tidy
+	go mod tidy
 
 install: build-go
 	cp $(BINARY) $(GOPATH)/bin/
 
 coverage:
-	cd lsp && go test -race -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
+	go test -race -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
 
 preflight: vet fmt lint test
 
