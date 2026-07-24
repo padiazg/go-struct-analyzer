@@ -201,9 +201,9 @@ motivated them.
 
 Semver increment guide for PR authors:
 
-- **Patch** (2.0.2 → 2.0.3): Bug fixes, doc updates
-- **Minor** (2.0.2 → 2.1.0): New features, backward-compatible
-- **Major** (2.0.2 → 3.0.0): Breaking changes
+- **Patch** (2.0.3 → 2.0.3): Bug fixes, doc updates
+- **Minor** (2.0.3 → 2.1.0): New features, backward-compatible
+- **Major** (2.0.3 → 3.0.0): Breaking changes
 
 ## Building for Local Installation
 
