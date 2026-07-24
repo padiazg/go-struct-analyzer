@@ -24,7 +24,7 @@ No plugins needed — Neovim's built-in LSP client supports all required methods
 ### 1. Install gsa-lsp binary
 
 ```bash
-go install github.com/padiazg/go-struct-analyzer/v2/lsp@latest
+go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest
 ```
 
 Or download a pre-built binary from [GitHub Releases](https://github.com/padiazg/go-struct-analyzer/releases).

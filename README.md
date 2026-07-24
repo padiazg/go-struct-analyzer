@@ -1,8 +1,9 @@
-# Go Struct Analyzer — v2.0.0
+# Go Struct Analyzer — v2.0.2
 
 A VS Code extension that shows memory size and padding information for Go structs, now powered by a **Go LSP backend** for exact `fieldalignment` parity.
 
 > **v2.0.0**: Analysis engine rewritten in Go using `go/types`. Named interfaces (`logger.Logger`) correctly sized at 16B instead of 8B. Matches `fieldalignment` exactly.
+> **v2.0.2**: `gsa-lsp` binary installed via `go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest`.
 
 ## Features
 
@@ -81,7 +82,7 @@ make install                                # copies to $GOPATH/bin
 Install via `go install`:
 
 ```bash
-go install github.com/padiazg/go-struct-analyzer/v2/lsp@latest
+go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest
 ```
 
 ### LSP Server for Other Editors
