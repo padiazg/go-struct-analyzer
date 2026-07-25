@@ -39,7 +39,7 @@ while [ $# -gt 0 ]; do
 done
 
 err()  { echo "error: $*" >&2; exit 1; }
-info() { echo "==> $*"; }
+info() { echo ". $*"; }
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || err "required command '$1' not found"
