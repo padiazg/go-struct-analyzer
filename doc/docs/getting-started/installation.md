@@ -2,7 +2,7 @@
 
 ## VS Code Marketplace
 
-[![VS Code Marketplace](https://img.shields.io/vscode-marketplace/v/PatricioDiaz.go-struct-analyzer.svg)](https://marketplace.visualstudio.com/items?itemName=PatricioDiaz.go-struct-analyzer)
+[![VS Code Marketplace](https://shieldcn.dev/vscode/installs/PatricioDiaz/go-struct-analyzer.svg?size=xs&split=true&label=VS+Marketplace)](https://marketplace.visualstudio.com/items?itemName=PatricioDiaz.go-struct-analyzer)
 
 Search for **Go Struct Analyzer** in the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`), or install directly:
 
@@ -14,7 +14,7 @@ code --install-extension PatricioDiaz.go-struct-analyzer
 
 ## Open VSX (VSCodium / Eclipse Theia / Gitpod)
 
-[![Open VSX](https://img.shields.io/open-vsx/v/PatricioDiaz/go-struct-analyzer)](https://open-vsx.org/extension/PatricioDiaz/go-struct-analyzer)
+[![Open VSX](https://shieldcn.dev/openvsx/downloads/PatricioDiaz/go-struct-analyzer.svg?size=xs&split=true&label=OpenVSX)](https://open-vsx.org/extension/PatricioDiaz/go-struct-analyzer)
 
 Search for **Go Struct Analyzer** in your editor's Extensions panel, or download from:
 
