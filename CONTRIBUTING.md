@@ -189,7 +189,7 @@ Matches `fieldalignment` exactly:
 An experimental Zed extension lives at [`editors/zed/`](https://github.com/padiazg/go-struct-analyzer/tree/main/editors/zed/). Install as a dev extension:
 
 1. `zed: install dev extension` → point to `editors/zed/`
-2. `gsa-lsp` must be on `PATH` (`go install` or `make install`)
+2. `gsa-lsp` must be on `PATH` (`make install`)
 
 The extension registers `gsa-lsp` as an additional language server for Go, running alongside `gopls`. See [`editors/zed/README.md`](https://github.com/padiazg/go-struct-analyzer/blob/main/editors/zed/README.md).
 
@@ -201,7 +201,7 @@ motivated them.
 
 Semver increment guide for PR authors:
 
-- **Patch** (2.0.3 → 2.0.3): Bug fixes, doc updates
+- **Patch** (2.0.3 → 2.0.4): Bug fixes, doc updates
 - **Minor** (2.0.3 → 2.1.0): New features, backward-compatible
 - **Major** (2.0.3 → 3.0.0): Breaking changes
 

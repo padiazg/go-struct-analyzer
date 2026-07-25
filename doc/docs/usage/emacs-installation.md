@@ -66,7 +66,7 @@ that is actually being loaded.
 ### 1. Install gsa-lsp binary
 
 ```bash
-go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest
+curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh
 ```
 
 Or download a pre-built binary from [GitHub Releases](https://github.com/padiazg/go-struct-analyzer/releases).
@@ -275,6 +275,6 @@ Open a Go file with struct types. Confirm the following:
   (same issue as above). Either delete the shadowing file or edit the
   correct one — use `C-h v user-init-file RET` to confirm which is active.
 
-- **`gsa-lsp` binary not found:** Ensure `go install ...` succeeded and
+- **`gsa-lsp` binary not found:** Ensure `curl ... | sh` succeeded and
   `$GOPATH/bin` or `$HOME/go/bin` is in your `$PATH`, or download the
   pre-built binary from GitHub Releases and place it on your `$PATH`.
