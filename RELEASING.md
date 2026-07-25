@@ -206,4 +206,4 @@ rm -rf "$GOBIN"
 ```
 
 If this step fails, **do not announce the release**. Cut another patch tag,
-push it, and repeat from step 5 of [Rule 3](#rule-3--release-process)
+push it, and repeat from step 8 of [Rule 3](#rule-3--major-version-bumps-v2-v3---sequence-matters).

@@ -195,10 +195,6 @@ The extension registers `gsa-lsp` as an additional language server for Go, runni
 
 ## Version and Release
 
-See [RELEASING.md](RELEASING.md) for the full release process, versioning
-rules, proxy immutability gotchas, and the binary naming pitfalls that
-motivated them.
-
 Semver increment guide for PR authors:
 
 - **Patch** (2.0.3 → 2.0.4): Bug fixes, doc updates

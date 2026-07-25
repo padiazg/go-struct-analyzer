@@ -83,7 +83,7 @@ nav:
     - resources/index.md
     - FAQ: resources/faq.md
     - Known Issues: resources/known-issues.md
-  - Contributing: contributing.md
+  - Contributing: CONTRIBUTING.md
   - License: license.md
   - Changelog: changelog.md
 
