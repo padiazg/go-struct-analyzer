@@ -64,6 +64,30 @@ code --install-extension go-struct-analyzer-*.vsix
 
 **Reload VS Code** after installation (`Ctrl+Shift+P` → "Developer: Reload Window").
 
+## Quick Install (Standalone Binary)
+
+Install the latest release of `gsa-lsp` with one line:
+
+```shell
+curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh
+```
+
+Install a specific version:
+
+```shell
+curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh -s -- -v v2.0.4
+```
+
+The script detects your OS/architecture, downloads the matching binary from GitHub Releases,
+verifies its SHA-256 checksum against the release's `checksums.txt`, and installs it to
+`$(go env GOPATH)/bin` (or `/usr/local/bin` if that is writable).
+
+To target a custom directory, use `-d`:
+
+```shell
+curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh -s -- -d ~/bin
+```
+
 ## Zed Editor
 
 gsa-lsp can also be used in Zed via a dev extension. See [Zed installation guide](../usage/zed-installation.md).

@@ -5,6 +5,7 @@
 Available for **VS Code** (extension), **Zed** (dev extension), **Emacs** (eglot/lsp-mode),
 and **Neovim** (built-in LSP). Works with any LSP-compatible editor via standard LSP protocol.
 
+> **v2.0.4**: Server version compatibility check — extension stops if gsa-lsp major version mismatches. curl installer served from GitHub Pages.
 > **v2.0.0**: Analysis engine rewritten in Go using `go/types`. Named interfaces correctly sized at 16B instead of 8B. Matches `fieldalignment` exactly.
 
 ## What It Does
@@ -32,7 +33,7 @@ code --install-extension PatricioDiaz.go-struct-analyzer
 
 **Neovim:** See [Neovim setup guide](usage/neovim-installation.md) — built-in LSP client.
 
-**Any LSP editor:** Point your LSP client to the `gsa-lsp` binary (`go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest`). gsa-lsp speaks standard inlayHint, hover, diagnostics, and codeAction.
+**Any LSP editor:** Install `gsa-lsp` with `curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh`, then point your LSP client to it. gsa-lsp speaks standard inlayHint, hover, diagnostics, and codeAction.
 
 ## Quick Start
 

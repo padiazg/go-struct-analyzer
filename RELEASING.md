@@ -4,6 +4,11 @@ Lessons learned from the v2.0.0 → v2.0.3 migration: a module-path/binary-layou
 mismatch combined with Go's immutable proxy caching turned a simple `go install`
 fix into three burned tags. This document exists so it doesn't happen again.
 
+> **Distribution model**: End-user installation uses the curl installer
+> (`curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh`),
+> not `go install`. `go install` is kept only as an internal reference in
+> RELEASING.md and CONTRIBUTING.md.
+
 ## What went wrong (v2.0.0/v2.0.1 postmortem)
 
 1. **Major version subdirectory confusion** — `go.mod` declared `module .../v2`
@@ -22,9 +27,9 @@ fix into three burned tags. This document exists so it doesn't happen again.
 
 ## Rule 1 — Never reuse or move a tag once pushed
 
-The instant a tag is pushed to a public remote, treat it as **immutable**, even
-if nobody has run `go install` yet. Any CI job, dependabot scan, or curious
-`go list -m` from anyone (including your own testing) can trigger proxy caching.
+The instant a tag is pushed to a public remote, treat it as **immutable**.
+Any CI job, dependabot scan, or curious request from anyone (including
+your own testing) can trigger proxy or CDN caching.
 
 - `git tag -f v2.0.0 <new commit> && git push -f origin v2.0.0` — never do this
 - Cut a new tag instead: `v2.0.1`, `v2.1.0`, whatever fits semver for the change.
@@ -36,7 +41,7 @@ it. Treat every push as final.
 
 ## Rule 2 — Layout the module for `cmd/`-style installs from day one
 
-For any module that ships a CLI/binary intended for `go install`:
+The Go binary source layout:
 
 ```
 module-root/
@@ -45,12 +50,6 @@ module-root/
     main.go                 # package main — this determines the binary name
   internal/
     ...                     # implementation packages, not importable externally
-```
-
-Install command becomes:
-
-```bash
-go install github.com/org/repo/cmd/<binary-name>@latest
 ```
 
 This guarantees:
@@ -65,35 +64,47 @@ This guarantees:
 **Do this before the first public tag ever goes out.** Restructuring after
 tags are public is exactly the mess this project went through.
 
-## Rule 3 — Major version bumps (v2, v3, ...) — sequence matters
+## Rule 3 — Release process
 
-When bumping to a new major version for the first time:
+When bumping to a new version:
 
-1. Update `go.mod`: `module github.com/org/repo/vN`
-2. Update **every** internal import path in the repo to include `/vN`
-3. Confirm layout follows Rule 2 (`cmd/<binary>/main.go` at the new import path)
-4. Build and test **fully** locally:
+1. Update `go.mod` module path and **every** internal import path (if changing major version)
+2. Confirm layout follows Rule 2 (`cmd/<binary>/main.go`)
+3. Build and test **fully** locally:
+
    ```bash
    go build ./...
    go vet ./...
    ./gsa-lsp version
    ```
-5. Commit
-6. **Only then** tag:
+
+4. Commit
+5. **Only then** tag:
+
    ```bash
    git tag vN.0.0
    ```
-7. Push commit **and** tag, verify both landed:
+
+6. Push commit **and** tag, verify both landed:
+
    ```bash
    git push origin <branch>
    git push origin vN.0.0
    ```
-8. Wait ~30s, then verify via the public proxy — see
-   [Verifying via proxy.golang.org](#verifying-via-proxygolangorg) below.
-9. Do a clean-room install test — see
-   [Clean-room go install test](#clean-room-go-install-test) below.
-10. Only after step 9 passes, update README/docs/goreleaser to point at the
-    new install path.
+
+7. Trigger goreleaser via the `release.yml` workflow (tag push triggers it).
+8. Verify GitHub Release artifacts:
+   - Binaries for linux+darwin, amd64+arm64
+   - `checksums.txt` with SHA-256 hashes
+   - Source dist tarball
+9. Verify the curl installer can fetch and install the new version:
+
+   ```bash
+   curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh -s -- -v vN.0.0
+   gsa-lsp version
+   ```
+
+10. Verify VSIX was uploaded to the release (if tagged via `release.yml`).
 
 ## Rule 4 — If something's wrong after tagging, bump — never fix in place
 
@@ -105,24 +116,25 @@ Once `vX.Y.Z` is pushed:
   That's normal and cheap. Abandoned tags cost nothing except a small gap in
   the version sequence.
 
-## Rule 5 — goreleaser and CI config must mirror the install path exactly
+## Rule 5 — goreleaser config must stay in sync
 
-Keep `.goreleaser.yml`'s `builds.main` and the release header's install
-instructions in permanent sync:
+Keep `.goreleaser.yml` (`dist/config.yaml`) settings consistent:
 
 ```yaml
 builds:
   - main: ./cmd/gsa-lsp
     binary: gsa-lsp
 
-release:
-  header: |
-    go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@{{ .Tag }}
+archives:
+  - format: tar.gz
+    name_template: "go-struct-analyzer_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 ```
 
-If these drift (someone changes `main:` but forgets the header), the release
-notes lie to users. Review this diff explicitly in every PR that touches
-`.goreleaser.yml`.
+- Targets must include linux+darwin, amd64+arm64
+- `checksums` must be enabled (produces `checksums.txt` used by the installer)
+- If you change `binary` or `main`, update both goreleaser and the installer
+
+Review this diff explicitly in every PR that touches `.goreleaser.yml`.
 
 ## Rule 6 — Pre-flight checklist before every tag push
 
@@ -134,66 +146,39 @@ notes lie to users. Review this diff explicitly in every PR that touches
 - [ ] Tag name has never been used before: `git tag -l vX.Y.Z` locally **and**
       check the GitHub releases page — someone may have tagged manually there
 - [ ] Push commit before push tag, confirm both are on the remote
-- [ ] Verify via `proxy.golang.org` after ~30s (see below)
-- [ ] Clean-room `go install` test before announcing the release (see below)
+- [ ] goreleaser `release.yml` workflow triggers and completes successfully
+- [ ] All release artifacts present (binaries, checksums.txt, source dist)
+- [ ] curl installer fetches and installs the new version successfully
+- [ ] VSIX uploaded to GitHub Release (if applicable)
 
-## Verifying via proxy.golang.org
+## Verifying the curl installer
 
-Run this after pushing the tag. Replace the version with your actual tag:
-
-```bash
-curl -s https://proxy.golang.org/github.com/padiazg/go-struct-analyzer/v2/@v/v2.0.3.info
-```
-
-Expected response — confirm `Hash` matches your just-pushed commit:
+After the goreleaser workflow completes, verify the installer can fetch and
+install the new release:
 
 ```bash
-# Get the commit the tag points to
-git rev-parse v2.0.3
-# e.g. fc68f1e40c27be6006decf02591edddf32f05120
+# Dry run — prints steps without installing
+curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh -n
+
+# Actually install the tagged version
+curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh -s -- -v v2.0.3
+
+# Verify the installed binary
+gsa-lsp version
+# expected: gsa-lsp v2.0.3 (commit: <sha>, built: <date>)
+
+# Smoke test
+gsa-lsp analyze samples/test_go_file.go | head -5
 ```
 
-```json
-{
-  "Version": "v2.0.3",
-  "Time": "2026-07-23T23:47:02Z",
-  "Origin": {
-    "VCS": "git",
-    "URL": "https://github.com/padiazg/go-struct-analyzer",
-    "Hash": "fc68f1e40c27be6006decf02591edddf32f05120",
-    "Ref": "refs/tags/v2.0.3"
-  }
-}
-```
+This mirrors exactly what end users experience. If the installer fails at
+any step (download, checksum verification, extraction), **do not announce
+the release**. Fix the goreleaser config, cut a new patch tag, and repeat.
 
-The `Hash` in the proxy response must match `git rev-parse <tag>`. If it
-doesn't match, either the proxy hasn't indexed yet (wait, retry) or — worse —
-this version string was already cached with different content from a previous
-force-push. In the latter case, **abandon the tag and bump again**. Do not
-investigate further; don't risk a poisoned version blocking users.
+## Legacy: Clean-room `go install` test
 
-Also confirm `@latest` resolves to the new version once it should be the
-newest:
-
-```bash
-curl -s https://proxy.golang.org/github.com/padiazg/go-struct-analyzer/v2/@latest
-```
-
-Expected response:
-
-```json
-{
-  "Version": "v2.0.3",
-  "Time": "2026-07-23T23:47:02Z",
-  ...
-}
-```
-
-If `@latest` still shows the previous version, the proxy may be behind. Wait
-another 30-60s and retry. If it persists for several minutes, check that the
-tag was actually pushed (`git ls-remote --tags origin vX.Y.Z`).
-
-## Clean-room `go install` test
+> Deprecated. We no longer ship via `go install` for end users. This test
+> is kept for internal verification and historical reference.
 
 Run this after the proxy check passes. It reproduces exactly what an end
 user's first-time install experiences — no local cache reuse.
@@ -220,13 +205,5 @@ ls "$GOBIN"
 rm -rf "$GOBIN"
 ```
 
-Why a fresh `GOBIN` and not your normal `$HOME/go/bin`: your local module
-cache (`$(go env GOMODCACHE)`) may contain stale entries from earlier testing.
-During the v2.0.0 migration, the local cache had `v2.0.0+incompatible` cached
-from a failed `go install github.com/padiazg/go-struct-analyzer@v2.0.0`
-attempt, which masked the real proxy error. A throwaway `GOBIN` with the
-default `GOPROXY` (not `direct`, not `off`) bypasses all of that.
-
 If this step fails, **do not announce the release**. Cut another patch tag,
-push it, and repeat from step 8 of
-[Rule 3](#rule-3--major-version-bumps-v2-v3--sequence-matters).
+push it, and repeat from step 5 of [Rule 3](#rule-3--release-process)

@@ -4,9 +4,48 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as cp from 'child_process';
 
+declare const EXTENSION_VERSION: string;
+
 let client: LanguageClient | undefined;
 let statusItem: vscode.StatusBarItem;
 let outputChannel: vscode.LogOutputChannel;
+
+function parseSemver(v: string): [number, number, number] | null {
+	const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(v);
+	if (!m) return null;
+	return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
+}
+
+async function checkServerVersion(serverVer: string): Promise<boolean> {
+	if (serverVer === 'dev' || serverVer === '0.0.0') return true;
+
+	const extVer = parseSemver(EXTENSION_VERSION);
+	const srvVer = parseSemver(serverVer);
+	if (!extVer || !srvVer) return true;
+
+	const [extMajor] = extVer;
+	const [srvMajor] = srvVer;
+
+	if (extMajor !== srvMajor) {
+		const upgrade = 'curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh';
+		outputChannel.error(`Major version mismatch: extension v${EXTENSION_VERSION} vs server v${serverVer}. Extension disabled.`);
+		vscode.window.showErrorMessage(
+			`Go Struct Analyzer: server version v${serverVer} is incompatible (extension is v${EXTENSION_VERSION})\n\nUpgrade:\n${upgrade}`,
+			'Open Install Docs'
+		).then(selection => {
+			if (selection === 'Open Install Docs') {
+				vscode.env.openExternal(vscode.Uri.parse('https://padiazg.github.io/go-struct-analyzer/getting-started/installation.html'));
+			}
+		});
+		return false;
+	}
+
+	if (extVer[1] !== srvVer[1]) {
+		outputChannel.warn(`Server v${serverVer} minor differs from extension v${EXTENSION_VERSION}. Consider updating.`);
+	}
+
+	return true;
+}
 
 export async function activate(context: vscode.ExtensionContext) {
 	const config = vscode.workspace.getConfiguration('goStructAnalyzer');
@@ -27,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	if (!binaryPath) {
 		setStatus('notfound');
 		outputChannel.error('gsa-lsp binary not found');
-		outputChannel.info('Install: go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest');
+		outputChannel.info('Install: curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh');
 		outputChannel.show();
 		return;
 	}
@@ -122,7 +161,7 @@ function setStatus(state: 'starting' | 'running' | 'error' | 'notfound', detail?
 			break;
 		case 'notfound':
 			statusItem.text = '$(circle-slash) GSA-LSP';
-			statusItem.tooltip = 'Binary not found. Install: go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest';
+			statusItem.tooltip = 'Binary not found. Install: curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh';
 			break;
 	}
 	statusItem.show();
@@ -137,6 +176,13 @@ async function fetchVersion() {
 		setStatus('running', `v${ver}`);
 		statusItem.tooltip = `Go Struct Analyzer v${detail}`;
 		outputChannel.info(`Version: v${detail}`);
+
+		const compat = await checkServerVersion(ver);
+		if (!compat) {
+			await client!.stop(3000);
+			setStatus('error', 'Incompatible server version');
+			return;
+		}
 	} catch {
 		setStatus('running');
 		outputChannel.warn('Version fetch failed (server may not support $/version)');

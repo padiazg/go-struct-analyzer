@@ -14,7 +14,7 @@ impl zed::Extension for GsaLspExtension {
     ) -> zed::Result<zed::Command> {
         let path = worktree
             .which("gsa-lsp")
-            .ok_or_else(|| "gsa-lsp binary not found in PATH. Install it with `go install github.com/padiazg/go-struct-analyzer/lsp/cmd/gsa-lsp@latest` or download from https://github.com/padiazg/go-struct-analyzer/releases".to_string())?;
+            .ok_or_else(|| "gsa-lsp binary not found in PATH. Install it with `curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh` or download from https://github.com/padiazg/go-struct-analyzer/releases".to_string())?;
 
         Ok(zed::Command {
             command: path,

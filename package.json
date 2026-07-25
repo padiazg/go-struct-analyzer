@@ -2,7 +2,7 @@
   "name": "go-struct-analyzer",
   "displayName": "Go Struct Analyzer",
   "description": "Shows size and padding information for Go structs",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "publisher": "PatricioDiaz",
   "author": {
     "name": "Patricio Diaz (padiazg@gmail.com)"
@@ -103,10 +103,10 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile:go": "go build -o gsa-lsp ./cmd/gsa-lsp",
-    "compile:ts": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "compile:ts": "NODE_VER=$(node -p 'require(\"./package.json\").version') && esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --banner:js=\"const EXTENSION_VERSION='${NODE_VER}';\"",
     "compile": "npm run compile:go && npm run compile:ts",
     "watch": "npm run esbuild -- --watch",
-    "esbuild": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node"
+    "esbuild": "NODE_VER=$(node -p 'require(\"./package.json\").version') && esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --banner:js=\"const EXTENSION_VERSION='${NODE_VER}';\""
   },
   "devDependencies": {
     "@types/node": "22.x",

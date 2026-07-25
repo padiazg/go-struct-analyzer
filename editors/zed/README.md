@@ -9,7 +9,7 @@ Runs alongside `gopls` — gopls handles navigation/completion, gsa-lsp adds lay
 Install `gsa-lsp` binary:
 
 ```bash
-go install github.com/padiazg/go-struct-analyzer/v2/cmd/gsa-lsp@latest
+curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh
 ```
 
 Or download from [GitHub Releases](https://github.com/padiazg/go-struct-analyzer/releases).

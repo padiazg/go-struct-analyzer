@@ -8,11 +8,17 @@ src/**
 **/tsconfig.json
 
 # Go source (only exclude lsp/ source, keep the binary)
-lsp/**
+cmd/**
+internal/**
+samples/**
+dist/**
 *.go
 gsa-lsp
 .goreleaser.yml
-dist
+go.mod
+go.sum
+
+install.sh
 
 ## Editors
 editors/

@@ -4,11 +4,23 @@ All notable changes to the Go Struct Analyzer extension will be documented in th
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-07-25
+
+### Added
+
+- **Server version compatibility check**: Extension verifies gsa-lsp binary version on startup. Major version mismatch stops the server and shows an error popup with upgrade instructions. Minor version mismatch shows a warning. Dev builds (`dev`) are skipped.
+- **curl installer**: `curl -fsSL https://padiazg.github.io/go-struct-analyzer/install.sh | sh` installs the latest gsa-lsp binary with checksum verification. Available at `doc/docs/install.sh` served from GitHub Pages.
+
+### Changed
+
+- **Distribution**: End-user installation via `curl` installer only. `go install` dropped as user-facing method — all docs, error messages, and runtime hints now point to the curl installer. The `go install` approach is kept only in internal docs (RELEASING.md, CONTRIBUTING.md).
+- **go install approach dropped**: `go install` fetches source from `proxy.golang.org` and builds from scratch with no `ldflags`. The binary always reports version `"dev"`, commit `"none"`, build date `"unknown"` — unlike goreleaser builds which stamp version, commit, and build date at compile time. The curl installer downloads pre-built binaries where these values are correctly set.
+
 ## [2.0.3] - 2026-07-24
 
 > Versions v2.0.0, v2.0.1 and v2.0.2 were skipped due to tag immutability issues
 > with the Go module proxy during migration. See
-> [RELEASING.md](RELEASING.md) for the postmortem.
+> [RELEASING.md](../../RELEASING.md) for the postmortem.
 
 ### Added
 
